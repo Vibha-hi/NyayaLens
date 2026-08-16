@@ -1,7 +1,7 @@
 export function ResultSkeleton() {
   return (
     <div aria-live="polite" aria-busy="true" className="divide-y divide-border">
-      <span className="sr-only">Searching demonstration records…</span>
+      <span className="sr-only">Searching precedent records…</span>
       {[0, 1, 2].map((index) => (
         <div key={index} className="py-6">
           <div className="h-3.5 w-24 rounded bg-muted" />

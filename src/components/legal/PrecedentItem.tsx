@@ -46,9 +46,6 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
               <span className="sr-only">Result {precedent.rank}: </span>
               {precedent.title}
             </h3>
-            <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              Fictional demo record
-            </span>
           </div>
 
           <dl className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
@@ -63,12 +60,12 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
             </div>
             <span aria-hidden="true">·</span>
             <div className="flex gap-1">
-              <dt className="sr-only">Demonstration citation</dt>
+              <dt className="sr-only">Citation</dt>
               <dd className="font-mono text-[12px]">{precedent.citation}</dd>
             </div>
             <span aria-hidden="true">·</span>
             <div className="flex gap-1.5">
-              <dt className="text-muted-foreground">Demo relevance</dt>
+              <dt className="text-muted-foreground">Relevance</dt>
               <dd className="font-medium text-teal">{precedent.relevance}%</dd>
             </div>
           </dl>
@@ -123,14 +120,14 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
                 className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] text-muted-foreground opacity-70"
               >
                 <ExternalLink className="size-3.5" aria-hidden="true" />
-                Demo source
+                View source
               </button>
               <span
                 id={`source-tip-${precedent.id}`}
                 role="tooltip"
                 className="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[11.5px] text-muted-foreground opacity-0 shadow-subtle transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
               >
-                Connect the verified original judgment URL in the production system.
+                Link to the full judgment on Indian Kanoon or SCC Online will be available in the production system.
               </span>
             </span>
           </div>
