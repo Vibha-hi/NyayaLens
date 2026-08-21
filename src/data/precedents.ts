@@ -238,6 +238,8 @@ export interface Precedent {
     matchingTerms: string[];
     relation: "Supports the submitted case" | "Contrasts with the submitted case";
   };
+  /** Indian Kanoon document ID — used to link to the full judgment */
+  kanoonDocId?: number;
 }
 
 export const FILTER_ISSUES = [

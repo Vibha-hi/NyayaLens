@@ -111,25 +111,37 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
               Why it matched
             </button>
 
-            <span className="group relative inline-flex">
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                aria-describedby={`source-tip-${precedent.id}`}
-                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] text-muted-foreground opacity-70"
+            {precedent.kanoonDocId ? (
+              <a
+                href={`https://indiankanoon.org/doc/${precedent.kanoonDocId}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] font-medium text-navy hover:bg-accent hover:text-brand-blue transition-colors"
               >
                 <ExternalLink className="size-3.5" aria-hidden="true" />
                 View source
-              </button>
-              <span
-                id={`source-tip-${precedent.id}`}
-                role="tooltip"
-                className="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[11.5px] text-muted-foreground opacity-0 shadow-subtle transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-              >
-                Link to the full judgment on Indian Kanoon or SCC Online will be available in the production system.
+              </a>
+            ) : (
+              <span className="group relative inline-flex">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  aria-describedby={`source-tip-${precedent.id}`}
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] text-muted-foreground opacity-70"
+                >
+                  <ExternalLink className="size-3.5" aria-hidden="true" />
+                  View source
+                </button>
+                <span
+                  id={`source-tip-${precedent.id}`}
+                  role="tooltip"
+                  className="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[11.5px] text-muted-foreground opacity-0 shadow-subtle transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                >
+                  Link to the full judgment on Indian Kanoon or SCC Online will be available in the production system.
+                </span>
               </span>
-            </span>
+            )}
           </div>
 
           <div id={panelId} hidden={!expanded} className="mt-4 rounded-md border border-border bg-surface p-4">

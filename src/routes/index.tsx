@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { SlidersHorizontal, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/legal/Navbar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
@@ -8,7 +8,8 @@ import { RecentCasesSection } from "@/components/legal/RecentCasesSection";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/legal/FilterPanel";
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
 import { ResultSkeleton } from "@/components/legal/ResultSkeleton";
-import { DEFAULT_QUERY, PRECEDENTS, type LegalCategory } from "@/data/precedents";
+import { DEFAULT_QUERY, type LegalCategory, type Precedent } from "@/data/precedents";
+import { searchCasesFn } from "@/api/kanoon";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,34 +39,58 @@ function Index() {
   const [isSearching, setIsSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState<LegalCategory>("All");
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [expandedId, setExpandedId] = useState<string | null>(PRECEDENTS[0]!.id);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [results, setResults] = useState<Precedent[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-  const results = useMemo(
-    () =>
-      PRECEDENTS.filter((precedent) => {
-        if (filters.court !== "All Courts" && precedent.court !== filters.court) return false;
-        if (filters.year !== "All Years" && precedent.year !== filters.year) return false;
-        if (filters.issue !== "All Issues" && !precedent.filterIssues.includes(filters.issue)) return false;
-        return true;
-      }),
-    [filters],
-  );
-
-  const resetFilters = () => setFilters(DEFAULT_FILTERS);
-
-  const handleSearch = () => {
+  const executeSearch = async (currentQuery: string, currentFilters: Filters) => {
     setIsSearching(true);
     setHasSearched(true);
-    setExpandedId(PRECEDENTS[0]!.id);
-    window.setTimeout(() => setIsSearching(false), 600);
+    setSearchError(null);
+    try {
+      // Call the TanStack server function → hits Indian Kanoon API on the server
+      const data = await searchCasesFn({ data: { query: currentQuery, filters: currentFilters } });
+      setResults(data);
+      if (data.length > 0) {
+        setExpandedId(data[0].id);
+      } else {
+        setExpandedId(null);
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+      const message = error instanceof Error ? error.message : "An unexpected error occurred while searching.";
+      setSearchError(message);
+      setResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    if (hasSearched) {
+      executeSearch(query, DEFAULT_FILTERS);
+    }
+  };
+
+  const handleFilterChange = (newFilters: Filters) => {
+    setFilters(newFilters);
+    if (hasSearched) {
+      executeSearch(query, newFilters);
+    }
+  };
+
+  const handleSearch = () => {
+    executeSearch(query, filters);
   };
 
   const handleClear = () => {
     setQuery("");
     setHasSearched(false);
     setIsSearching(false);
-    resetFilters();
+    setFilters(DEFAULT_FILTERS);
+    setResults([]);
   };
 
   const scrollToSearch = () => {
@@ -150,7 +175,7 @@ function Index() {
                     <span className="text-muted-foreground">{filtersOpen ? "Hide" : "Show"}</span>
                   </button>
                   <div id="filter-panel" className={`${filtersOpen ? "block" : "hidden"} lg:block`}>
-                    <FilterPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
+                    <FilterPanel filters={filters} onChange={handleFilterChange} onReset={resetFilters} />
                   </div>
                 </aside>
 
@@ -175,6 +200,22 @@ function Index() {
 
                   {isSearching ? (
                     <ResultSkeleton />
+                  ) : searchError ? (
+                    <div className="py-12 text-center rounded-xl border border-dashed border-red-300 bg-red-50/50 mt-6">
+                      <p className="text-[15px] font-medium text-red-700">
+                        Search failed
+                      </p>
+                      <p className="mt-2 text-[13px] text-red-600/80 max-w-md mx-auto">
+                        {searchError}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => executeSearch(query, filters)}
+                        className="mt-4 rounded-md bg-navy px-4 py-2 text-[13px] font-medium text-white hover:bg-navy/90"
+                      >
+                        Try again
+                      </button>
+                    </div>
                   ) : results.length === 0 ? (
                     <div className="py-16 text-center rounded-xl border border-dashed border-border bg-surface mt-6">
                       <p className="text-[15px] font-medium text-muted-foreground">
