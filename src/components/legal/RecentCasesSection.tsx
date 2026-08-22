@@ -11,12 +11,7 @@ import {
   Check,
   Scale,
 } from "lucide-react";
-import {
-  RECENT_CASES,
-  CATEGORIES,
-  type LegalCategory,
-  type RecentCase,
-} from "@/data/precedents";
+import { RECENT_CASES, CATEGORIES, type LegalCategory, type RecentCase } from "@/data/precedents";
 
 interface RecentCasesSectionProps {
   activeCategory: LegalCategory;
@@ -97,8 +92,8 @@ export function RecentCasesSection({
           </h2>
           <p className="mt-1.5 text-[14.5px] text-muted-foreground max-w-2xl leading-relaxed">
             Explore recent rulings across key legal domains. Click{" "}
-            <span className="font-semibold text-navy">"Find Similar Precedents"</span> on any case to
-            load its factual matrix directly into the AI search engine.
+            <span className="font-semibold text-navy">"Find Similar Precedents"</span> on any case
+            to load its factual matrix directly into the AI search engine.
           </p>
         </div>
 
@@ -151,9 +146,12 @@ export function RecentCasesSection({
       {filteredCases.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed border-border bg-surface p-12 text-center">
           <BookOpen className="mx-auto size-10 text-muted-foreground/60 mb-3" />
-          <h3 className="text-[17px] font-semibold text-navy">No recent cases in this category yet</h3>
+          <h3 className="text-[17px] font-semibold text-navy">
+            No recent cases in this category yet
+          </h3>
           <p className="mt-1 text-[13.5px] text-muted-foreground">
-            We are continuously indexing fresh court judgments. Check back soon or switch categories.
+            We are continuously indexing fresh court judgments. Check back soon or switch
+            categories.
           </p>
           <button
             type="button"

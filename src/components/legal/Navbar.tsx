@@ -118,7 +118,9 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
               >
                 <Layers className="size-4 text-brand-blue" />
                 <span>
-                  {activeCategory === "All" ? "Categories" : activeCategoryInfo?.shortLabel || "Categories"}
+                  {activeCategory === "All"
+                    ? "Categories"
+                    : activeCategoryInfo?.shortLabel || "Categories"}
                 </span>
                 <ChevronDown
                   className={`size-3.5 text-muted-foreground transition-transform duration-200 ${
@@ -157,9 +159,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                         >
                           <div
                             className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ${
-                              isActive
-                                ? "bg-white/15 text-saffron"
-                                : "bg-muted text-brand-blue"
+                              isActive ? "bg-white/15 text-saffron" : "bg-muted text-brand-blue"
                             }`}
                           >
                             <Icon className="size-4" />

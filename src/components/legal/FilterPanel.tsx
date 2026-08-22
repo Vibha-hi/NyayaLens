@@ -6,7 +6,11 @@ export interface Filters {
   issue: string;
 }
 
-export const DEFAULT_FILTERS: Filters = { court: "All Courts", year: "All Years", issue: "All Issues" };
+export const DEFAULT_FILTERS: Filters = {
+  court: "All Courts",
+  year: "All Years",
+  issue: "All Issues",
+};
 
 interface FilterPanelProps {
   filters: Filters;
@@ -29,10 +33,15 @@ function Group({
 }) {
   return (
     <fieldset className="mt-6 first:mt-0">
-      <legend className="text-[12px] font-semibold tracking-wide text-navy uppercase">{legend}</legend>
+      <legend className="text-[12px] font-semibold tracking-wide text-navy uppercase">
+        {legend}
+      </legend>
       <div className="mt-2.5 space-y-1.5">
         {options.map((option) => (
-          <label key={option} className="flex cursor-pointer items-center gap-2 text-[13px] text-foreground">
+          <label
+            key={option}
+            className="flex cursor-pointer items-center gap-2 text-[13px] text-foreground"
+          >
             <input
               type="radio"
               name={name}

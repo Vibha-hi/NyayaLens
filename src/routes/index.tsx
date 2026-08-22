@@ -59,7 +59,8 @@ function Index() {
       }
     } catch (error) {
       console.error("Search failed:", error);
-      const message = error instanceof Error ? error.message : "An unexpected error occurred while searching.";
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred while searching.";
       setSearchError(message);
       setResults([]);
     } finally {
@@ -94,7 +95,8 @@ function Index() {
   };
 
   const scrollToSearch = () => {
-    const searchEl = document.getElementById("search-section") || document.getElementById("case-description");
+    const searchEl =
+      document.getElementById("search-section") || document.getElementById("case-description");
     if (searchEl) {
       searchEl.scrollIntoView({ behavior: "smooth", block: "center" });
       const textarea = document.getElementById("case-description") as HTMLTextAreaElement | null;
@@ -117,7 +119,8 @@ function Index() {
 
   const handleUseRecentCaseAsQuery = (caseQuery: string) => {
     setQuery(caseQuery);
-    scrollToSearch();
+    executeSearch(caseQuery, filters);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -175,13 +178,19 @@ function Index() {
                     <span className="text-muted-foreground">{filtersOpen ? "Hide" : "Show"}</span>
                   </button>
                   <div id="filter-panel" className={`${filtersOpen ? "block" : "hidden"} lg:block`}>
-                    <FilterPanel filters={filters} onChange={handleFilterChange} onReset={resetFilters} />
+                    <FilterPanel
+                      filters={filters}
+                      onChange={handleFilterChange}
+                      onReset={resetFilters}
+                    />
                   </div>
                 </aside>
 
                 <section className="min-w-0 flex-1" aria-label="Search results">
                   <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
-                    <strong>Precedent Retrieval Matrix:</strong> Facts and legal issues compared against indexed judgments using semantic similarity, case posture, and statutory sections.
+                    <strong>Precedent Retrieval Matrix:</strong> Facts and legal issues compared
+                    against indexed judgments using semantic similarity, case posture, and statutory
+                    sections.
                   </div>
 
                   <div className="mt-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
@@ -202,9 +211,7 @@ function Index() {
                     <ResultSkeleton />
                   ) : searchError ? (
                     <div className="py-12 text-center rounded-xl border border-dashed border-red-300 bg-red-50/50 mt-6">
-                      <p className="text-[15px] font-medium text-red-700">
-                        Search failed
-                      </p>
+                      <p className="text-[15px] font-medium text-red-700">Search failed</p>
                       <p className="mt-2 text-[13px] text-red-600/80 max-w-md mx-auto">
                         {searchError}
                       </p>
@@ -237,7 +244,9 @@ function Index() {
                           precedent={precedent}
                           expanded={expandedId === precedent.id}
                           onToggle={() =>
-                            setExpandedId((current) => (current === precedent.id ? null : precedent.id))
+                            setExpandedId((current) =>
+                              current === precedent.id ? null : precedent.id,
+                            )
                           }
                         />
                       ))}
@@ -254,4 +263,3 @@ function Index() {
     </div>
   );
 }
-

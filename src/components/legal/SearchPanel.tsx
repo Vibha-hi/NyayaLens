@@ -64,9 +64,11 @@ export function SearchPanel({
           </h1>
 
           <p className="mt-3.5 text-[16px] leading-relaxed text-muted-foreground max-w-3xl">
-            Input factual circumstances, statutory provisions, or procedural questions. Our retrieval
-            model combines <strong className="text-navy font-semibold">semantic vector embedding</strong> with{" "}
-            <strong className="text-navy font-semibold">legal term ontology matching</strong> across Supreme Court & High Court benches.
+            Input factual circumstances, statutory provisions, or procedural questions. Our
+            retrieval model combines{" "}
+            <strong className="text-navy font-semibold">semantic vector embedding</strong> with{" "}
+            <strong className="text-navy font-semibold">legal term ontology matching</strong> across
+            Supreme Court & High Court benches.
           </p>
         </div>
 
@@ -193,7 +195,8 @@ export function SearchPanel({
           {/* Disclaimer */}
           <p className="mt-5 text-[11.5px] leading-relaxed text-muted-foreground/80 border-t border-border/40 pt-3">
             <strong>Disclaimer:</strong> Citizen Legal AI is an assistive legal research prototype.
-            Relevance metrics reflect algorithmic text similarity and must be verified against original Supreme Court & High Court judgment texts.
+            Relevance metrics reflect algorithmic text similarity and must be verified against
+            original Supreme Court & High Court judgment texts.
           </p>
         </form>
       </div>

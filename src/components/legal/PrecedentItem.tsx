@@ -89,7 +89,10 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
             <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               Matched evidence
             </p>
-            <HighlightedEvidence text={precedent.matchedEvidence} phrases={precedent.highlightPhrases} />
+            <HighlightedEvidence
+              text={precedent.matchedEvidence}
+              phrases={precedent.highlightPhrases}
+            />
           </div>
 
           <p className="mt-3 text-[13px] text-foreground">
@@ -138,13 +141,18 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
                   role="tooltip"
                   className="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[11.5px] text-muted-foreground opacity-0 shadow-subtle transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
                 >
-                  Link to the full judgment on Indian Kanoon or SCC Online will be available in the production system.
+                  Link to the full judgment on Indian Kanoon or SCC Online will be available in the
+                  production system.
                 </span>
               </span>
             )}
           </div>
 
-          <div id={panelId} hidden={!expanded} className="mt-4 rounded-md border border-border bg-surface p-4">
+          <div
+            id={panelId}
+            hidden={!expanded}
+            className="mt-4 rounded-md border border-border bg-surface p-4"
+          >
             <dl className="space-y-3 text-[13px]">
               <div>
                 <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -170,14 +178,19 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
                 </dt>
                 <dd className="mt-1.5 flex flex-wrap gap-2">
                   {precedent.explanation.matchingTerms.map((term) => (
-                    <span key={term} className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11.5px] text-navy">
+                    <span
+                      key={term}
+                      className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11.5px] text-navy"
+                    >
                       {term}
                     </span>
                   ))}
                 </dd>
               </div>
               <div>
-                <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Relation</dt>
+                <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Relation
+                </dt>
                 <dd className="mt-1 text-foreground">{precedent.explanation.relation}</dd>
               </div>
               <div>
