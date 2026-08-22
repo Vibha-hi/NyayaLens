@@ -81,13 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "A frontend prototype that retrieves similar court precedents from a case description, with matched evidence and match explanations.",
+          "A source-linked hybrid legal retrieval prototype using local semantic embeddings and exact legal-term matching.",
       },
       { property: "og:title", content: "Citizen Legal AI — Precedent Retrieval Prototype" },
       {
         property: "og:description",
         content:
-          "Describe a case and review similar court precedents with matched evidence and explanations. Prototype only.",
+          "Describe a case and inspect source-linked passages retrieved by local semantic and legal-term matching. Prototype only.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

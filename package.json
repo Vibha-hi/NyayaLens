@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "retrieval:bootstrap": "python services/retrieval/bootstrap_model.py",
+    "dev:retrieval": "python -m uvicorn app.main:app --app-dir services/retrieval --host 127.0.0.1 --port 8001 --reload",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:retrieval": "python -m unittest discover -s services/retrieval/tests -v",
+    "evaluate:retrieval": "python services/retrieval/evaluate.py",
     "format": "prettier --write ."
   },
   "dependencies": {

@@ -64,11 +64,10 @@ export function SearchPanel({
           </h1>
 
           <p className="mt-3.5 text-[16px] leading-relaxed text-muted-foreground max-w-3xl">
-            Input factual circumstances, statutory provisions, or procedural questions. Our
-            retrieval model combines{" "}
-            <strong className="text-navy font-semibold">semantic vector embedding</strong> with{" "}
-            <strong className="text-navy font-semibold">legal term ontology matching</strong> across
-            Supreme Court & High Court benches.
+            Enter anonymized facts, statutory provisions, or procedural questions. The local engine
+            combines <strong className="text-navy font-semibold">dense passage retrieval</strong>{" "}
+            with <strong className="text-navy font-semibold">exact legal-term search</strong> over a
+            small, source-linked evaluation corpus.
           </p>
         </div>
 
@@ -188,15 +187,15 @@ export function SearchPanel({
 
             <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
               <Shield className="size-3.5 text-brand-blue" />
-              <span>Full semantic matching with citation verification</span>
+              <span>Local hybrid retrieval with source-linked evidence</span>
             </div>
           </div>
 
           {/* Disclaimer */}
           <p className="mt-5 text-[11.5px] leading-relaxed text-muted-foreground/80 border-t border-border/40 pt-3">
             <strong>Disclaimer:</strong> Citizen Legal AI is an assistive legal research prototype.
-            Relevance metrics reflect algorithmic text similarity and must be verified against
-            original Supreme Court & High Court judgment texts.
+            Use anonymized facts only. Rankings are retrieval signals—not legal accuracy—and every
+            result must be verified against the original judgment.
           </p>
         </form>
       </div>

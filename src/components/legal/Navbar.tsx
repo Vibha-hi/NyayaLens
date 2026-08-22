@@ -96,7 +96,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 </span>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                AI Precedent Retrieval & Analysis
+                Local Precedent Retrieval & Analysis
               </p>
             </div>
           </a>
@@ -137,7 +137,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                       Browse by Legal Category
                     </p>
                     <p className="text-[11.5px] text-muted-foreground/80 mt-0.5">
-                      Filter court precedents & recent rulings
+                      Apply a query template for a legal domain
                     </p>
                   </div>
 
@@ -204,14 +204,14 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
               )}
             </div>
 
-            {/* Link to Recent Cases */}
+            {/* Link to corpus overview */}
             <button
               type="button"
               onClick={scrollToRecent}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] font-medium text-foreground/80 hover:bg-accent hover:text-navy transition-colors"
             >
               <History className="size-4 text-muted-foreground" />
-              <span>Recent Cases</span>
+              <span>Corpus</span>
             </button>
 
             {/* Link to Precedent Search */}
@@ -232,7 +232,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-navy font-semibold">Supreme & High Court Database</span>
+            <span className="text-navy font-semibold">Source-linked evaluation corpus</span>
           </div>
 
           {onSearchFocus && (
@@ -273,7 +273,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background p-2.5 text-[13px] font-medium text-navy"
               >
                 <History className="size-4 text-brand-blue" />
-                <span>Recent Cases</span>
+                <span>Corpus</span>
               </button>
               <button
                 type="button"

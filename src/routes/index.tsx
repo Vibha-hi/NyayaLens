@@ -1,30 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SlidersHorizontal, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/legal/Navbar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import { SearchPanel } from "@/components/legal/SearchPanel";
-import { RecentCasesSection } from "@/components/legal/RecentCasesSection";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/legal/FilterPanel";
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
 import { ResultSkeleton } from "@/components/legal/ResultSkeleton";
 import { DEFAULT_QUERY, type LegalCategory, type Precedent } from "@/data/precedents";
-import { searchCasesFn } from "@/api/kanoon";
+import { searchCasesFn } from "@/api/search";
+import type { SearchEngineResponse } from "@/contracts/search";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Citizen Legal AI — AI Precedent Retrieval & Recent Judgments" },
+      { title: "Citizen Legal AI — Source-Linked Hybrid Precedent Retrieval" },
       {
         name: "description",
         content:
-          "Explore recent Supreme Court & High Court cases across murder, property disputes, bail, cybercrime, and economic offences, or search factual case descriptions to retrieve matching legal precedents.",
+          "Search a source-linked evaluation corpus using local dense and exact legal-term retrieval with transparent evidence.",
       },
       { property: "og:title", content: "Citizen Legal AI — Precedent Retrieval Engine" },
       {
         property: "og:description",
         content:
-          "Explore recent court rulings across legal categories and retrieve matching precedents with cited evidence and match explanations.",
+          "Retrieve matching precedents from a source-linked evaluation corpus with exact evidence and transparent ranking traces.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -43,28 +43,42 @@ function Index() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [results, setResults] = useState<Precedent[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchMeta, setSearchMeta] = useState<Omit<SearchEngineResponse, "results"> | null>(null);
+  const latestRequestId = useRef(0);
 
   const executeSearch = async (currentQuery: string, currentFilters: Filters) => {
+    const requestId = ++latestRequestId.current;
     setIsSearching(true);
     setHasSearched(true);
     setSearchError(null);
     try {
-      // Call the TanStack server function → hits Indian Kanoon API on the server
-      const data = await searchCasesFn({ data: { query: currentQuery, filters: currentFilters } });
-      setResults(data);
-      if (data.length > 0) {
-        setExpandedId(data[0].id);
+      const data = await searchCasesFn({
+        data: { query: currentQuery, filters: currentFilters, topK: 10 },
+      });
+      if (requestId !== latestRequestId.current) return;
+      setResults(data.results);
+      setSearchMeta({
+        runId: data.runId,
+        corpusVersion: data.corpusVersion,
+        modelVersion: data.modelVersion,
+        retrievalMethod: data.retrievalMethod,
+        extractedSignals: data.extractedSignals,
+        latencyMs: data.latencyMs,
+      });
+      if (data.results.length > 0) {
+        setExpandedId(data.results[0]?.id ?? null);
       } else {
         setExpandedId(null);
       }
     } catch (error) {
+      if (requestId !== latestRequestId.current) return;
       console.error("Search failed:", error);
       const message =
         error instanceof Error ? error.message : "An unexpected error occurred while searching.";
       setSearchError(message);
       setResults([]);
     } finally {
-      setIsSearching(false);
+      if (requestId === latestRequestId.current) setIsSearching(false);
     }
   };
 
@@ -87,11 +101,14 @@ function Index() {
   };
 
   const handleClear = () => {
+    latestRequestId.current += 1;
     setQuery("");
     setHasSearched(false);
     setIsSearching(false);
     setFilters(DEFAULT_FILTERS);
     setResults([]);
+    setSearchMeta(null);
+    setSearchError(null);
   };
 
   const scrollToSearch = () => {
@@ -108,19 +125,13 @@ function Index() {
 
   const handleSelectCategory = (category: LegalCategory) => {
     setActiveCategory(category);
-    // If the user hasn't searched, scroll smoothly to the recent cases section if on desktop
+    // Keep category templates and corpus information in view before the first search.
     if (!hasSearched) {
       const recentSection = document.getElementById("recent-cases-heading");
       if (recentSection && category !== "All") {
         recentSection.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
-  };
-
-  const handleUseRecentCaseAsQuery = (caseQuery: string) => {
-    setQuery(caseQuery);
-    executeSearch(caseQuery, filters);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -144,11 +155,38 @@ function Index() {
 
         <div className="mx-auto max-w-[1380px] px-4 py-8 sm:px-6">
           {!hasSearched ? (
-            <RecentCasesSection
-              activeCategory={activeCategory}
-              onSelectCategory={handleSelectCategory}
-              onUseAsQuery={handleUseRecentCaseAsQuery}
-            />
+            <section
+              id="recent-cases-heading"
+              aria-labelledby="corpus-heading"
+              className="mx-auto max-w-4xl py-12 sm:py-16"
+            >
+              <div className="rounded-xl border border-border bg-surface p-6 shadow-subtle sm:p-8">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-brand-blue">
+                  Bundled evaluation corpus
+                </p>
+                <h2 id="corpus-heading" className="mt-2 font-serif text-[25px] font-bold text-navy">
+                  Five source-linked Supreme Court bail precedents
+                </h2>
+                <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                  The keyless local engine currently demonstrates hybrid retrieval over a
+                  deliberately small, verified corpus covering regular, anticipatory and default
+                  bail. It is not a complete database and will abstain when filters have no matching
+                  indexed case.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Dense retrieval", "BGE-small passage embeddings"],
+                    ["Lexical retrieval", "SQLite FTS5 exact-term search"],
+                    ["Transparent fusion", "RRF with case-level grouping"],
+                  ].map(([title, detail]) => (
+                    <div key={title} className="rounded-md border border-border bg-background p-3">
+                      <p className="text-[12.5px] font-semibold text-navy">{title}</p>
+                      <p className="mt-1 text-[11.5px] text-muted-foreground">{detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           ) : (
             <div className="pt-4">
               <div className="mb-6 flex items-center justify-between">
@@ -158,7 +196,7 @@ function Index() {
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-1.5 text-[13px] font-medium text-navy hover:bg-accent hover:text-brand-blue transition-colors shadow-2xs"
                 >
                   <ArrowLeft className="size-4" />
-                  <span>← Back to Recent Court Cases</span>
+                  <span>Back to corpus overview</span>
                 </button>
               </div>
 
@@ -188,10 +226,33 @@ function Index() {
 
                 <section className="min-w-0 flex-1" aria-label="Search results">
                   <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
-                    <strong>Precedent Retrieval Matrix:</strong> Facts and legal issues compared
-                    against indexed judgments using semantic similarity, case posture, and statutory
-                    sections.
+                    <strong>Local hybrid retrieval:</strong> Dense passage similarity and exact
+                    legal-term search are fused with Reciprocal Rank Fusion. Results come from the
+                    bundled, source-linked evaluation corpus and require verification.
                   </div>
+
+                  {searchMeta && !isSearching && (
+                    <div className="mt-3 rounded-md border border-border bg-surface px-3.5 py-3 text-[12px] text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Corpus: {searchMeta.corpusVersion}</span>
+                        <span>Model: {searchMeta.modelVersion}</span>
+                        <span>Search time: {searchMeta.latencyMs} ms</span>
+                      </div>
+                      {searchMeta.extractedSignals.length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-navy">Detected signals:</span>
+                          {searchMeta.extractedSignals.map((signal) => (
+                            <span
+                              key={signal}
+                              className="rounded-md border border-border bg-background px-2 py-0.5 text-navy"
+                            >
+                              {signal}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
                     <div>
@@ -199,11 +260,11 @@ function Index() {
                         {results.length} Matching Precedent{results.length === 1 ? "" : "s"}
                       </h2>
                       <p className="mt-1 text-[13px] text-muted-foreground">
-                        Ranked using hybrid semantic relevance and legal-term verification
+                        Ranked by dense retrieval, lexical retrieval and transparent RRF fusion
                       </p>
                     </div>
                     <span className="rounded-full border border-brand-blue/40 bg-brand-blue/10 px-3 py-1 text-[12px] font-semibold text-brand-blue">
-                      Hybrid Fused Relevance
+                      Hybrid RRF ranking
                     </span>
                   </div>
 
@@ -226,7 +287,7 @@ function Index() {
                   ) : results.length === 0 ? (
                     <div className="py-16 text-center rounded-xl border border-dashed border-border bg-surface mt-6">
                       <p className="text-[15px] font-medium text-muted-foreground">
-                        No precedent records match the selected filters.
+                        No indexed precedents match this query and the selected filters.
                       </p>
                       <button
                         type="button"

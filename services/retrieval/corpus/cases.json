@@ -1,0 +1,151 @@
+{
+  "corpusVersion": "bail-supreme-court-v1",
+  "description": "Small, source-linked evaluation corpus for demonstrating hybrid retrieval. Not a complete legal database.",
+  "cases": [
+    {
+      "id": "sc-sanjay-chandra-2011",
+      "title": "Sanjay Chandra v. Central Bureau of Investigation",
+      "court": "Supreme Court",
+      "year": 2011,
+      "category": "Bail & Personal Liberty",
+      "citation": "Criminal Appeal No. 2178 of 2011; (2012) 1 SCC 40",
+      "posture": "Appeal against refusal of regular bail in an economic-offence prosecution",
+      "legalIssues": ["Regular Bail", "Personal Liberty", "Witness Interference", "Flight Risk"],
+      "sourceUrl": "https://indiankanoon.org/doc/1563495/",
+      "chunks": [
+        {
+          "id": "sc-sanjay-chandra-2011-p21",
+          "section": "Bail principles",
+          "paragraph": "Paragraph 21",
+          "evidence": "The object of bail is to secure the appearance of the accused person at his trial by reasonable amount of bail.",
+          "context": "The Court distinguished securing attendance at trial from using pre-trial custody as punishment.",
+          "indexText": "regular bail personal liberty economic offence accused appearance at trial detention is not punishment flight risk witness tampering Article 21 bail is the rule"
+        },
+        {
+          "id": "sc-sanjay-chandra-2011-p14",
+          "section": "Purpose of detention",
+          "paragraph": "Paragraphs 14-16",
+          "evidence": "The object of bail is neither punitive nor preventative. Deprivation of liberty must be considered a punishment.",
+          "context": "The judgment discusses proportionality, presumed innocence, trial attendance and unsupported allegations of witness tampering.",
+          "indexText": "pretrial custody not punitive presumed innocence prolonged trial documentary economic case regular bail no material supporting witness tampering"
+        }
+      ]
+    },
+    {
+      "id": "sc-satender-kumar-antil-2022",
+      "title": "Satender Kumar Antil v. Central Bureau of Investigation",
+      "court": "Supreme Court",
+      "year": 2022,
+      "category": "Bail & Personal Liberty",
+      "citation": "M.A. No. 1849 of 2021 in SLP (Crl.) No. 5191 of 2021; (2022) 10 SCC 51",
+      "posture": "Supreme Court directions and guidelines concerning arrest, bail and unnecessary pre-trial detention",
+      "legalIssues": ["Regular Bail", "Prolonged Custody", "Personal Liberty"],
+      "sourceUrl": "https://indiankanoon.org/doc/7148380/",
+      "chunks": [
+        {
+          "id": "sc-satender-kumar-antil-2022-p11",
+          "section": "Bail is the rule",
+          "paragraph": "Paragraph 11",
+          "evidence": "The principle that bail is the rule and jail is the exception has been well recognised through the repetitive pronouncements of this Court.",
+          "context": "The Court connects bail jurisprudence with Article 21 and the presumption of innocence.",
+          "indexText": "regular bail jail exception Article 21 personal liberty presumption innocence appearance trial unnecessary arrest prolonged custody"
+        },
+        {
+          "id": "sc-satender-kumar-antil-2022-p12",
+          "section": "Purpose of bail",
+          "paragraph": "Paragraph 12",
+          "evidence": "Detention in custody pending completion of trial could be a cause of great hardship.",
+          "context": "The judgment reiterates that pre-trial detention should not operate as punishment and issues category-based bail guidance.",
+          "indexText": "trial delay long custody detention hardship bail guidelines investigation arrest charge sheet conditional release"
+        }
+      ]
+    },
+    {
+      "id": "sc-bikramjit-singh-2020",
+      "title": "Bikramjit Singh v. State of Punjab",
+      "court": "Supreme Court",
+      "year": 2020,
+      "category": "Bail & Personal Liberty",
+      "citation": "Criminal Appeal No. 667 of 2020; (2020) 10 SCC 616",
+      "posture": "Appeal concerning default bail under Section 167(2) CrPC and the UAPA/NIA special-court framework",
+      "legalIssues": ["Default Bail", "Personal Liberty", "Investigation Deadline"],
+      "sourceUrl": "https://indiankanoon.org/doc/10807134/",
+      "chunks": [
+        {
+          "id": "sc-bikramjit-singh-2020-p22",
+          "section": "Default bail",
+          "paragraph": "Paragraph 22",
+          "evidence": "Once the maximum period for investigation of an offence is over, the accused shall be released on bail.",
+          "context": "The Court examined when the indefeasible right to default bail arises under Section 167(2).",
+          "indexText": "default bail statutory bail section 167 charge sheet deadline investigation period indefeasible right UAPA NIA personal liberty"
+        },
+        {
+          "id": "sc-bikramjit-singh-2020-p29",
+          "section": "Article 21 and statutory bail",
+          "paragraph": "Paragraph 29",
+          "evidence": "The right to default bail is part of the procedure established by law under Article 21 of the Constitution of India.",
+          "context": "The Court treated default bail as a fundamental protection and set aside the refusal of relief.",
+          "indexText": "fundamental right Article 21 default bail statutory period charge sheet filed application before challan personal liberty"
+        }
+      ]
+    },
+    {
+      "id": "sc-sushila-aggarwal-2020",
+      "title": "Sushila Aggarwal v. State (NCT of Delhi)",
+      "court": "Supreme Court",
+      "year": 2020,
+      "category": "Bail & Personal Liberty",
+      "citation": "SLP (Crl.) Nos. 7281-7282 of 2017; (2020) 5 SCC 1",
+      "posture": "Constitution Bench reference on the duration and conditions of anticipatory bail under Section 438 CrPC",
+      "legalIssues": ["Anticipatory Bail", "Personal Liberty", "Witness Interference", "Flight Risk"],
+      "sourceUrl": "https://indiankanoon.org/doc/123660783/",
+      "chunks": [
+        {
+          "id": "sc-sushila-aggarwal-2020-p42",
+          "section": "Duration of anticipatory bail",
+          "paragraph": "Paragraph 42",
+          "evidence": "The normal rule should be not to limit the operation of the order in relation to a period of time.",
+          "context": "The Court held that anticipatory-bail protection need not invariably end at a fixed stage, while permitting case-specific conditions.",
+          "indexText": "anticipatory bail pre-arrest bail section 438 duration time limit charge sheet trial conditions personal liberty"
+        },
+        {
+          "id": "sc-sushila-aggarwal-2020-final",
+          "section": "Final conclusions",
+          "paragraph": "Final conclusion 1",
+          "evidence": "The protection granted under Section 438 should not invariably be limited to a fixed period.",
+          "context": "The Constitution Bench answered the reference on duration and emphasized fact-specific judicial conditions.",
+          "indexText": "pre arrest protection anticipatory bail continues trial court summons charges framed fixed period witness intimidation absconding conditions"
+        }
+      ]
+    },
+    {
+      "id": "sc-p-chidambaram-ed-2019",
+      "title": "P. Chidambaram v. Directorate of Enforcement",
+      "court": "Supreme Court",
+      "year": 2019,
+      "category": "Fraud & Economic Offences",
+      "citation": "Criminal Appeal No. 1340 of 2019; (2019) 9 SCC 24",
+      "posture": "Appeal against refusal of anticipatory bail during a PMLA investigation",
+      "legalIssues": ["Anticipatory Bail", "Flight Risk", "Economic Offence", "Custodial Interrogation"],
+      "sourceUrl": "https://indiankanoon.org/doc/90251163/",
+      "chunks": [
+        {
+          "id": "sc-p-chidambaram-ed-2019-p81",
+          "section": "Investigation-stage considerations",
+          "paragraph": "Paragraph 81",
+          "evidence": "Grant of anticipatory bail at the stage of investigation may frustrate the investigating agency in collecting useful information.",
+          "context": "The Court considered the nature of the money-laundering allegations, investigation stage and claimed need for custodial interrogation.",
+          "indexText": "anticipatory bail refused PMLA money laundering economic offence custodial interrogation ongoing investigation gravity flight risk section 438"
+        },
+        {
+          "id": "sc-p-chidambaram-ed-2019-p83",
+          "section": "Disposition",
+          "paragraph": "Paragraph 83",
+          "evidence": "In the result, the appeal is dismissed. It is for the appellant to work out his remedy in accordance with law.",
+          "context": "This is a contrasting precedent concerning anticipatory bail in a serious economic-offence investigation.",
+          "indexText": "contrasting precedent bail refusal appeal dismissed money laundering investigation gravity pre arrest bail regular bail remedy"
+        }
+      ]
+    }
+  ]
+}
