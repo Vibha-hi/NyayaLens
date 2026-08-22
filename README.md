@@ -2,14 +2,14 @@
 
 A sober, source-linked precedent retrieval prototype for lawyers and judicial researchers. It combines local semantic embeddings with SQLite full-text search, then fuses both rankings with reciprocal-rank fusion (RRF). Search runs without a paid API or API key.
 
-This remains a research prototype, not a comprehensive legal database or legal-advice system. The bundled corpus currently contains five selected Supreme Court bail decisions and ten manually reviewed passages. Every result links to the original judgment for human verification.
+This remains a research prototype, not a comprehensive legal database or legal-advice system. When generated import data is present, the current local corpus contains 1,412 Supreme Court and High Court judgments split into 45,210 source-located passages. Otherwise, the service falls back to five bundled demonstration decisions. Every result opens either the exact source URL extracted from the PDF or the local source PDF for human verification.
 
 ## Retrieval flow
 
 1. The TanStack server validates the query and filters and proxies the request; the browser never receives service credentials.
 2. The Python service embeds the query locally with `BAAI/bge-small-en-v1.5` through ONNX Runtime.
 3. Dense cosine retrieval and SQLite FTS5 retrieval run over the same filtered corpus.
-4. RRF combines the two candidate rankings and groups passages by case.
+4. The dense branch ranks judgments; the lexical branch ranks all passages; RRF combines them and selects the best evidence passage per case.
 5. The API returns source locators, reason codes and retrieval traces—not predicted outcomes or invented relevance percentages.
 
 ## Local setup (Windows PowerShell)
@@ -32,6 +32,14 @@ Download the public embedding model once. This requires internet access but no a
 ```powershell
 services/retrieval/.venv/Scripts/python.exe services/retrieval/bootstrap_model.py
 ```
+
+Place source PDFs below the ignored `data/incoming` directory, then build the normalized CSV, QA report and search corpus:
+
+```powershell
+services/retrieval/.venv/Scripts/python.exe services/retrieval/ingest.py
+```
+
+The importer writes `data/processed/judgments.csv` with the exact columns `id,title,court,date,citation,case_number,issues,source_url,pdf_filename`, plus `data/processed/ingestion_qa.csv`. It uses embedded PDF text first and local OCR only for low-quality files. Missing citations and source URLs remain blank instead of being guessed.
 
 Start the retrieval service:
 
@@ -57,7 +65,7 @@ services/retrieval/.venv/Scripts/python.exe -m unittest discover -s services/ret
 services/retrieval/.venv/Scripts/python.exe services/retrieval/evaluate.py
 ```
 
-The evaluation corpus is versioned in `services/retrieval/evaluation/golden_queries.json`. The report compares dense, lexical and hybrid rankings using MRR@10, Recall@10 and nDCG@10. Five queries are useful as a regression gate, but far too small to support a claim of legal accuracy.
+The bundled evaluation in `services/retrieval/evaluation/golden_queries.json` applies to the five demonstration decisions. When the imported corpus is active, the command uses `import_regression_queries.json` instead. That set catches ranking regressions for four representative topics; it is not a substitute for a lawyer-reviewed legal relevance set.
 
 ## Configuration and security
 
@@ -70,7 +78,7 @@ The evaluation corpus is versioned in `services/retrieval/evaluation/golden_quer
 
 ## Scaling path
 
-SQLite and exact cosine search are appropriate for this small demonstrator. A production corpus should use a licensed and traceable ingestion pipeline, immutable source versions, paragraph-level citation checks, PostgreSQL/pgvector or an equivalent vector index, hybrid reranking, access controls and a lawyer-reviewed evaluation set. The detailed implementation and rollout plan is in [`docs/semantic-search-execution-plan.md`](docs/semantic-search-execution-plan.md).
+SQLite FTS5 and exact cosine search are appropriate for this local 1,412-judgment demonstrator. A production corpus should use a licensed and traceable ingestion pipeline, immutable source versions, paragraph-level citation checks, an approximate-nearest-neighbor vector index, hybrid reranking, access controls and a lawyer-reviewed evaluation set. The detailed implementation and rollout plan is in [`docs/semantic-search-execution-plan.md`](docs/semantic-search-execution-plan.md).
 
 ## Lovable synchronization
 

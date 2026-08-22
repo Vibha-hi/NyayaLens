@@ -5,9 +5,6 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 
-CourtLevel = Literal["Supreme Court", "High Court"]
-
-
 class SearchFilters(BaseModel):
     court: str = "All Courts"
     year: str = "All Years"
@@ -40,6 +37,23 @@ class SearchFilters(BaseModel):
             "Documentary Evidence",
             "Witness Interference",
             "Flight Risk",
+            "Criminal Law",
+            "Constitutional Law",
+            "Service Law",
+            "Taxation",
+            "Arbitration",
+            "Property / Land",
+            "Family / Matrimonial",
+            "Motor Vehicles / Compensation",
+            "Consumer Law",
+            "Insolvency",
+            "Environmental Law",
+            "Narcotics / NDPS",
+            "Economic Offences / PMLA",
+            "Cheque Dishonour",
+            "Civil Procedure",
+            "Quashing of Criminal Proceedings",
+            "Unclassified",
         }
         if value not in allowed:
             raise ValueError("Unsupported legal-issue filter")
@@ -71,7 +85,7 @@ class SearchResult(BaseModel):
     id: str
     rank: int
     title: str
-    court: CourtLevel
+    court: str
     year: str
     category: str
     citation: str
@@ -98,6 +112,8 @@ class SearchResponse(BaseModel):
     retrievalMethod: str
     extractedSignals: list[str]
     latencyMs: int
+    caseCount: int
+    chunkCount: int
     results: list[SearchResult]
 
 

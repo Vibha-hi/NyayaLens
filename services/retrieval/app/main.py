@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from .engine import SemanticEngine
 from .models import HealthResponse, SearchRequest, SearchResponse
@@ -48,3 +49,11 @@ def health(engine: SemanticEngine = Depends(get_engine)) -> HealthResponse:
 @app.post("/search", response_model=SearchResponse, dependencies=[Depends(verify_service_secret)])
 def search(request: SearchRequest, engine: SemanticEngine = Depends(get_engine)) -> SearchResponse:
     return engine.search(request.query, request.filters, request.top_k)
+
+
+@app.get("/documents/{case_id}")
+def document(case_id: str, engine: SemanticEngine = Depends(get_engine)) -> FileResponse:
+    path = engine.document_path(case_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Source document is not available")
+    return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline")

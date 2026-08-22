@@ -24,6 +24,9 @@ __pycache__/
 .pytest_cache/
 services/retrieval/data/*.db
 services/retrieval/data/model-cache/
+data/incoming/
+data/processed/
+services/retrieval/data/import/
 
 # Wrangler / Cloudflare
 .wrangler/

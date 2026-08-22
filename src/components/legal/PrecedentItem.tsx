@@ -134,7 +134,7 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] font-medium text-navy transition-colors hover:bg-accent hover:text-brand-blue"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
-              Verify original judgment
+              Open source document
             </a>
           </div>
 

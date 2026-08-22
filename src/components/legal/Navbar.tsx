@@ -232,7 +232,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-navy font-semibold">Source-linked evaluation corpus</span>
+            <span className="text-navy font-semibold">Imported judgment corpus</span>
           </div>
 
           {onSearchFocus && (

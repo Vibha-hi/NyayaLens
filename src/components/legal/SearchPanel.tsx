@@ -66,8 +66,8 @@ export function SearchPanel({
           <p className="mt-3.5 text-[16px] leading-relaxed text-muted-foreground max-w-3xl">
             Enter anonymized facts, statutory provisions, or procedural questions. The local engine
             combines <strong className="text-navy font-semibold">dense passage retrieval</strong>{" "}
-            with <strong className="text-navy font-semibold">exact legal-term search</strong> over a
-            small, source-linked evaluation corpus.
+            with <strong className="text-navy font-semibold">exact legal-term search</strong> over
+            the imported Supreme Court and High Court judgment corpus.
           </p>
         </div>
 

@@ -11,6 +11,7 @@ from app.models import SearchFilters
 
 
 GOLDEN_PATH = Path(__file__).resolve().parent / "evaluation" / "golden_queries.json"
+IMPORTED_GOLDEN_PATH = Path(__file__).resolve().parent / "evaluation" / "import_regression_queries.json"
 
 
 def unique_case_ids(engine: SemanticEngine, chunk_ids: list[str]) -> list[str]:
@@ -46,7 +47,8 @@ def ndcg_at(ranked: list[str], relevance: dict[str, int], cutoff: int = 10) -> f
 
 def main() -> None:
     engine = SemanticEngine()
-    golden = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
+    evaluation_path = IMPORTED_GOLDEN_PATH if engine.corpus_version.startswith("import-") else GOLDEN_PATH
+    golden = json.loads(evaluation_path.read_text(encoding="utf-8"))
     filters = SearchFilters()
     summary: dict[str, dict[str, float]] = {}
 
@@ -72,7 +74,17 @@ def main() -> None:
             name: round(sum(values) / len(values), 4) for name, values in metrics.items()
         }
 
-    print(json.dumps({"corpusVersion": engine.corpus_version, "queries": len(golden), "metrics": summary}, indent=2))
+    print(
+        json.dumps(
+            {
+                "corpusVersion": engine.corpus_version,
+                "evaluationSet": evaluation_path.name,
+                "queries": len(golden),
+                "metrics": summary,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

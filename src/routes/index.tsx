@@ -18,13 +18,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Search a source-linked evaluation corpus using local dense and exact legal-term retrieval with transparent evidence.",
+          "Search an imported Supreme Court and High Court judgment corpus using local dense and exact legal-term retrieval.",
       },
       { property: "og:title", content: "Citizen Legal AI — Precedent Retrieval Engine" },
       {
         property: "og:description",
         content:
-          "Retrieve matching precedents from a source-linked evaluation corpus with exact evidence and transparent ranking traces.",
+          "Retrieve matching precedents from imported judgments with exact evidence and transparent ranking traces.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -64,6 +64,8 @@ function Index() {
         retrievalMethod: data.retrievalMethod,
         extractedSignals: data.extractedSignals,
         latencyMs: data.latencyMs,
+        caseCount: data.caseCount,
+        chunkCount: data.chunkCount,
       });
       if (data.results.length > 0) {
         setExpandedId(data.results[0]?.id ?? null);
@@ -162,22 +164,22 @@ function Index() {
             >
               <div className="rounded-xl border border-border bg-surface p-6 shadow-subtle sm:p-8">
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-brand-blue">
-                  Bundled evaluation corpus
+                  Imported judgment corpus
                 </p>
                 <h2 id="corpus-heading" className="mt-2 font-serif text-[25px] font-bold text-navy">
-                  Five source-linked Supreme Court bail precedents
+                  Imported Supreme Court and High Court judgments
                 </h2>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  The keyless local engine currently demonstrates hybrid retrieval over a
-                  deliberately small, verified corpus covering regular, anticipatory and default
-                  bail. It is not a complete database and will abstain when filters have no matching
-                  indexed case.
+                  The keyless local engine searches the imported judgment collection with local
+                  embeddings and exact legal-term matching. Metadata and source passages are
+                  extracted from the supplied PDFs; records marked for review should be checked
+                  against their source documents.
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   {[
-                    ["Dense retrieval", "BGE-small passage embeddings"],
-                    ["Lexical retrieval", "SQLite FTS5 exact-term search"],
-                    ["Transparent fusion", "RRF with case-level grouping"],
+                    ["Dense retrieval", "Local BGE-small passage embeddings"],
+                    ["Lexical retrieval", "SQLite FTS5 legal-term search"],
+                    ["Transparent fusion", "RRF with judgment-level grouping"],
                   ].map(([title, detail]) => (
                     <div key={title} className="rounded-md border border-border bg-background p-3">
                       <p className="text-[12.5px] font-semibold text-navy">{title}</p>
@@ -228,7 +230,7 @@ function Index() {
                   <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
                     <strong>Local hybrid retrieval:</strong> Dense passage similarity and exact
                     legal-term search are fused with Reciprocal Rank Fusion. Results come from the
-                    bundled, source-linked evaluation corpus and require verification.
+                    imported judgment corpus and require verification against each source document.
                   </div>
 
                   {searchMeta && !isSearching && (
@@ -237,6 +239,8 @@ function Index() {
                         <span>Corpus: {searchMeta.corpusVersion}</span>
                         <span>Model: {searchMeta.modelVersion}</span>
                         <span>Search time: {searchMeta.latencyMs} ms</span>
+                        <span>{searchMeta.caseCount.toLocaleString()} indexed judgments</span>
+                        <span>{searchMeta.chunkCount.toLocaleString()} searchable passages</span>
                       </div>
                       {searchMeta.extractedSignals.length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">

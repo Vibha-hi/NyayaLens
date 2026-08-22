@@ -15,11 +15,11 @@ export interface CategoryInfo {
 export const CATEGORIES: CategoryInfo[] = [
   {
     id: "All",
-    label: "Bundled Corpus",
+    label: "Imported Corpus",
     shortLabel: "All",
     badgeColor: "bg-slate-100 text-slate-800 border-slate-200",
     iconName: "Scale",
-    description: "Search every case in the bundled source-linked evaluation corpus.",
+    description: "Search every indexed Supreme Court and High Court judgment in the local corpus.",
     sampleQuery:
       "The applicant seeks regular bail after prolonged custody. The investigation is complete and the prosecution relies mainly on documentary evidence.",
   },
@@ -50,9 +50,9 @@ export interface Precedent {
   id: string;
   rank: number;
   title: string;
-  court: CourtLevel;
+  court: string;
   year: string;
-  category: LegalCategory;
+  category: string;
   citation: string;
   posture: string;
   legalIssues: string[];
@@ -84,9 +84,25 @@ export const FILTER_ISSUES = [
   "Documentary Evidence",
   "Witness Interference",
   "Flight Risk",
+  "Criminal Law",
+  "Constitutional Law",
+  "Service Law",
+  "Taxation",
+  "Arbitration",
+  "Property / Land",
+  "Family / Matrimonial",
+  "Motor Vehicles / Compensation",
+  "Consumer Law",
+  "Insolvency",
+  "Environmental Law",
+  "Narcotics / NDPS",
+  "Economic Offences / PMLA",
+  "Cheque Dishonour",
+  "Civil Procedure",
+  "Quashing of Criminal Proceedings",
 ] as const;
 
-export const YEARS = ["2022", "2020", "2019", "2011"] as const;
+export const YEARS = ["2026", "2025", "2024", "2023"] as const;
 
 export const COURTS = ["Supreme Court", "High Court"] as const;
 

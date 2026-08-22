@@ -1,0 +1,22 @@
+[
+  {
+    "id": "default-bail-charge-sheet-deadline",
+    "query": "The statutory investigation period expired without a charge sheet, so the accused claims default bail under Section 167(2).",
+    "relevance": { "sc-ik-120451656": 3, "sc-ik-94971837": 1 }
+  },
+  {
+    "id": "arbitral-award-patent-illegality",
+    "query": "An arbitral award is challenged for patent illegality and lack of jurisdiction under the Arbitration Act.",
+    "relevance": { "sc-ik-173948479": 3, "sc-ik-57679451": 1 }
+  },
+  {
+    "id": "income-tax-assessment-deduction",
+    "query": "An income tax assessment and deduction dispute is before the court.",
+    "relevance": { "sc-ik-63951797": 3, "sc-ik-45182264": 1 }
+  },
+  {
+    "id": "ndps-bail-prolonged-custody",
+    "query": "The accused seeks regular bail in an NDPS case after prolonged custody and trial delay.",
+    "relevance": { "hc-phhc011365222025": 3, "sc-ik-42829903": 1 }
+  }
+]
