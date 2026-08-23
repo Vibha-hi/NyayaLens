@@ -8,7 +8,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -47,11 +46,13 @@ def ensure_environment() -> Path:
     return python
 
 
-def download_with_http(url: str, destination: Path) -> None:
+def download_with_http(url: str, destination: Path, accept: str | None = None) -> None:
     token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     headers = {"User-Agent": "precedent-finder-retrieval-setup"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if accept:
+        headers["Accept"] = accept
     request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request) as response, destination.open("wb") as output:
@@ -89,6 +90,25 @@ def download_bundle(manifest: dict[str, object], destination: Path) -> None:
                 downloaded.replace(destination)
             return
         print("GitHub CLI download was unavailable; trying the release URL directly...", flush=True)
+    token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
+    if token:
+        api_url = f"https://api.github.com/repos/{repository}/releases/tags/{tag}"
+        request = urllib.request.Request(
+            api_url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "precedent-finder-retrieval-setup",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        with urllib.request.urlopen(request) as response:
+            release = json.load(response)
+        release_asset = next((item for item in release["assets"] if item["name"] == asset), None)
+        if release_asset is None:
+            raise RuntimeError(f"Release {tag} does not contain {asset}")
+        download_with_http(str(release_asset["url"]), destination, "application/octet-stream")
+        return
     url = f"https://github.com/{repository}/releases/download/{tag}/{asset}"
     download_with_http(url, destination)
 
