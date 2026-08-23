@@ -1,0 +1,9 @@
+{
+  "repository": "Zap-coder-cpu/precedent-finder-demo",
+  "releaseTag": "retrieval-corpus-v1",
+  "assetName": "precedent-retrieval-bundle-v1.zip",
+  "sha256": "9efbb1b9a96b62109c0765c5db33a2d7a0dff744f1efdec32f0e7c3250d03fc2",
+  "corpusVersion": "import-2026-08-23-1412-cases",
+  "caseCount": 1412,
+  "chunkCount": 45210
+}

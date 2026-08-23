@@ -14,6 +14,25 @@ This remains a research prototype, not a comprehensive legal database or legal-a
 
 ## Local setup (Windows PowerShell)
 
+### Fast setup from the versioned release bundle
+
+After cloning the repository, install the frontend and start the application:
+
+```powershell
+npm install
+npm run dev:all
+```
+
+On the first run, `dev:all` invokes the setup automatically. It downloads the checksum-verified `retrieval-corpus-v1` GitHub release bundle, creates the Python environment, installs pinned dependencies and downloads the public embedding model. For a private repository, authenticate GitHub CLI with `gh auth login` or provide `GH_TOKEN` first.
+
+The setup can also be run separately:
+
+```powershell
+npm run setup:retrieval
+```
+
+The manual setup below remains available for rebuilding the corpus from source PDFs.
+
 Install the frontend:
 
 ```powershell

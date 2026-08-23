@@ -4,6 +4,17 @@ This service provides keyless, local hybrid precedent retrieval over imported Su
 
 ## Setup
 
+From the repository root, the preferred setup uses the versioned GitHub release bundle:
+
+```powershell
+npm install
+npm run dev:all
+```
+
+On its first run, `dev:all` invokes the setup automatically. The downloader verifies the bundle SHA-256 before extraction. The release contains the generated corpus, SQLite index, QA exports and source PDFs required by local document links. It never downloads or writes an environment file. Use `npm run setup:retrieval` when setup should be run separately.
+
+To rebuild everything manually instead:
+
 ```powershell
 python -m venv services/retrieval/.venv
 services/retrieval/.venv/Scripts/python -m pip install -r services/retrieval/requirements.txt

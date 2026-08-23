@@ -27,6 +27,7 @@ services/retrieval/data/model-cache/
 data/incoming/
 data/processed/
 services/retrieval/data/import/
+.release/
 
 # Wrangler / Cloudflare
 .wrangler/
