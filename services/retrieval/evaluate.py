@@ -36,6 +36,13 @@ def recall_at(ranked: list[str], relevant: set[str], cutoff: int = 10) -> float:
     return len(set(ranked[:cutoff]) & relevant) / len(relevant)
 
 
+def precision_at(ranked: list[str], relevant: set[str], cutoff: int = 5) -> float:
+    """Share of the first k retrieved cases that were marked relevant by reviewers."""
+    if cutoff <= 0:
+        return 0.0
+    return len(set(ranked[:cutoff]) & relevant) / cutoff
+
+
 def ndcg_at(ranked: list[str], relevance: dict[str, int], cutoff: int = 10) -> float:
     def dcg(grades: list[int]) -> float:
         return sum((2**grade - 1) / math.log2(rank + 1) for rank, grade in enumerate(grades, start=1))
@@ -53,7 +60,7 @@ def main() -> None:
     summary: dict[str, dict[str, float]] = {}
 
     for mode in ("dense", "lexical", "hybrid"):
-        metrics = {"mrr@10": [], "recall@10": [], "ndcg@10": []}
+        metrics = {"precision@5": [], "mrr@10": [], "recall@10": [], "ndcg@10": []}
         for item in golden:
             if mode == "dense":
                 chunks = [result.chunk_id for result in engine._dense(item["query"], filters)]
@@ -66,6 +73,7 @@ def main() -> None:
 
             relevance = item["relevance"]
             relevant = set(relevance)
+            metrics["precision@5"].append(precision_at(ranked, relevant))
             metrics["mrr@10"].append(reciprocal_rank(ranked, relevant))
             metrics["recall@10"].append(recall_at(ranked, relevant))
             metrics["ndcg@10"].append(ndcg_at(ranked, relevance))

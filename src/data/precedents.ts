@@ -58,8 +58,21 @@ export interface Precedent {
   legalIssues: string[];
   filterIssues: string[];
   matchedEvidence: string;
+  caseSummary: string;
   highlightPhrases: string[];
   outcome: string;
+  matterStatus: string;
+  trialStatus: string;
+  winner: string;
+  caseStage: string;
+  caseStageConfidence: string;
+  caseStageEvidence: string;
+  outcomeRelief: string;
+  outcomeEvidence: string;
+  relevanceBasis: string[];
+  authorityScore: number;
+  authorityBasis: string[];
+  benchStrength: string;
   whyItMatched: string[];
   explanation: {
     sharedFacts: string;
@@ -102,7 +115,20 @@ export const FILTER_ISSUES = [
   "Quashing of Criminal Proceedings",
 ] as const;
 
-export const YEARS = ["2026", "2025", "2024", "2023"] as const;
+export const YEARS = [
+  "2026",
+  "2025",
+  "2024",
+  "2023",
+  "2022",
+  "2021",
+  "2020",
+  "2019",
+  "2018",
+  "2017",
+  "2016",
+  "2015",
+] as const;
 
 export const COURTS = ["Supreme Court", "High Court"] as const;
 

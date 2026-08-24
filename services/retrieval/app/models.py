@@ -93,8 +93,21 @@ class SearchResult(BaseModel):
     legalIssues: list[str]
     filterIssues: list[str]
     matchedEvidence: str
+    caseSummary: str
     highlightPhrases: list[str]
     outcome: str
+    matterStatus: str
+    trialStatus: str
+    winner: str
+    caseStage: str
+    caseStageConfidence: str
+    caseStageEvidence: str
+    outcomeRelief: str
+    outcomeEvidence: str
+    relevanceBasis: list[str]
+    authorityScore: float
+    authorityBasis: list[str]
+    benchStrength: str
     whyItMatched: list[str]
     explanation: dict[str, object]
     sourceUrl: str

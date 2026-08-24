@@ -14,13 +14,13 @@ import type { SearchEngineResponse } from "@/contracts/search";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Citizen Legal AI — Source-Linked Hybrid Precedent Retrieval" },
+      { title: "Nyayalens — Source-Linked Hybrid Precedent Retrieval" },
       {
         name: "description",
         content:
           "Search an imported Supreme Court and High Court judgment corpus using local dense and exact legal-term retrieval.",
       },
-      { property: "og:title", content: "Citizen Legal AI — Precedent Retrieval Engine" },
+      { property: "og:title", content: "Nyayalens — Precedent Retrieval Engine" },
       {
         property: "og:description",
         content:
@@ -229,8 +229,11 @@ function Index() {
                 <section className="min-w-0 flex-1" aria-label="Search results">
                   <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
                     <strong>Local hybrid retrieval:</strong> Dense passage similarity and exact
-                    legal-term search are fused with Reciprocal Rank Fusion. Results come from the
-                    imported judgment corpus and require verification against each source document.
+                    legal-term search are fused with Reciprocal Rank Fusion. A small authority
+                    adjustment then considers court hierarchy, bench strength, recency, shared
+                    issues and statutory provisions. Each result shows its relevance basis; Precision@5 is
+                    measured separately on legally reviewed queries, not presented as a per-case
+                    confidence score. Outcomes must be verified against the source judgment.
                   </div>
 
                   {searchMeta && !isSearching && (

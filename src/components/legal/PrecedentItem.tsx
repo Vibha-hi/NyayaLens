@@ -29,6 +29,9 @@ interface PrecedentItemProps {
 
 export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemProps) {
   const panelId = `why-${precedent.id}`;
+  const uncertainStage = precedent.caseStageConfidence === "Low";
+  const uncertainMatter = precedent.matterStatus.toLowerCase().includes("verify");
+  const uncertainOutcome = precedent.outcomeRelief.toLowerCase().includes("verify");
 
   return (
     <article className="py-7">
@@ -41,34 +44,76 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h3 className="text-[17px] leading-snug font-semibold text-navy">
-              <span className="sr-only">Result {precedent.rank}: </span>
-              {precedent.title}
-            </h3>
-          </div>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h3 className="text-[17px] leading-snug font-semibold text-navy">
+                  <span className="sr-only">Result {precedent.rank}: </span>
+                  {precedent.title}
+                </h3>
+              </div>
 
-          <dl className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
-            <div className="flex gap-1">
-              <dt className="sr-only">Court</dt>
-              <dd>{precedent.court}</dd>
+              <dl className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
+                <div className="flex gap-1">
+                  <dt className="sr-only">Court</dt>
+                  <dd>{precedent.court}</dd>
+                </div>
+                <span aria-hidden="true">·</span>
+                <div className="flex gap-1">
+                  <dt className="sr-only">Year</dt>
+                  <dd>{precedent.year}</dd>
+                </div>
+                <span aria-hidden="true">·</span>
+                <div className="flex gap-1">
+                  <dt className="sr-only">Citation</dt>
+                  <dd className="font-mono text-[12px]">{precedent.citation}</dd>
+                </div>
+                <span aria-hidden="true">·</span>
+                <div className="flex gap-1.5">
+                  <dt className="text-muted-foreground">Final rank</dt>
+                  <dd className="font-medium text-teal">#{precedent.rank}</dd>
+                </div>
+              </dl>
             </div>
-            <span aria-hidden="true">·</span>
-            <div className="flex gap-1">
-              <dt className="sr-only">Year</dt>
-              <dd>{precedent.year}</dd>
+
+            <div className="grid shrink-0 gap-2 sm:grid-cols-3" aria-label="Case stage, status and outcome">
+              <div
+                className={`min-w-40 rounded-md border px-3 py-2 ${
+                  uncertainStage
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-sky-200 bg-sky-50 text-sky-900"
+                }`}
+              >
+                <p className="text-[9.5px] font-bold tracking-wider uppercase">Case stage</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">{precedent.caseStage}</p>
+                <p className="mt-1 text-[10px] opacity-75">
+                  {precedent.caseStageConfidence} confidence
+                </p>
+              </div>
+              <div
+                className={`min-w-32 rounded-md border px-3 py-2 ${
+                  uncertainMatter
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+                }`}
+              >
+                <p className="text-[9.5px] font-bold tracking-wider uppercase">Matter status</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">{precedent.matterStatus}</p>
+              </div>
+              <div
+                className={`min-w-48 max-w-60 rounded-md border px-3 py-2 ${
+                  uncertainOutcome
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                }`}
+              >
+                <p className="text-[9.5px] font-bold tracking-wider uppercase">Outcome / relief</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">
+                  {precedent.outcomeRelief}
+                </p>
+              </div>
             </div>
-            <span aria-hidden="true">·</span>
-            <div className="flex gap-1">
-              <dt className="sr-only">Citation</dt>
-              <dd className="font-mono text-[12px]">{precedent.citation}</dd>
-            </div>
-            <span aria-hidden="true">·</span>
-            <div className="flex gap-1.5">
-              <dt className="text-muted-foreground">Hybrid rank</dt>
-              <dd className="font-medium text-teal">#{precedent.rank}</dd>
-            </div>
-          </dl>
+          </div>
 
           <p className="mt-2 text-[13px] text-muted-foreground">
             <span className="text-navy">Procedural posture:</span> {precedent.posture}
@@ -87,22 +132,33 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
 
           <div className="mt-4 rounded-r-md border-l-2 border-brand-blue bg-evidence px-3.5 py-3">
             <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              Matched evidence
+              Query-focused case summary
             </p>
             <HighlightedEvidence
-              text={precedent.matchedEvidence}
+              text={precedent.caseSummary}
               phrases={precedent.highlightPhrases}
             />
             {precedent.evidenceLocator && (
               <p className="mt-2 text-[11.5px] text-muted-foreground">
-                Source locator: {precedent.evidenceLocator.section} ·{" "}
+                Extractive summary from: {precedent.evidenceLocator.section} ·{" "}
                 {precedent.evidenceLocator.paragraph}
               </p>
             )}
           </div>
 
           <p className="mt-3 text-[13px] text-foreground">
-            <span className="font-medium text-navy">Verification status:</span> {precedent.outcome}
+            <span className="font-medium text-navy">Recorded outcome:</span> {precedent.outcome}
+          </p>
+
+          <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-navy">Relevance basis:</span>{" "}
+            {precedent.relevanceBasis.join(" · ")}
+          </p>
+
+          <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-navy">Authority context:</span>{" "}
+            {precedent.authorityBasis.join(" · ")} · Bench: {precedent.benchStrength} · Adjustment:{" "}
+            {precedent.authorityScore.toFixed(6)}
           </p>
 
           {(precedent.denseRank || precedent.lexicalRank) && (
@@ -144,6 +200,18 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
             className="mt-4 rounded-md border border-border bg-surface p-4"
           >
             <dl className="space-y-3 text-[13px]">
+              <div>
+                <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Case-stage evidence
+                </dt>
+                <dd className="mt-1 text-foreground">{precedent.caseStageEvidence}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Outcome evidence
+                </dt>
+                <dd className="mt-1 text-foreground">{precedent.outcomeEvidence}</dd>
+              </div>
               <div>
                 <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                   Shared facts

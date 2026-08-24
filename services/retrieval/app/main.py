@@ -12,7 +12,7 @@ from .models import HealthResponse, SearchRequest, SearchResponse
 
 
 app = FastAPI(
-    title="Citizen Legal AI Retrieval Service",
+    title="Nyayalens Retrieval Service",
     version="0.1.0",
     description="Keyless local hybrid retrieval over a source-linked evaluation corpus.",
 )

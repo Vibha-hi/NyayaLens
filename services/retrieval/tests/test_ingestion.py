@@ -70,6 +70,27 @@ class IngestionTests(unittest.TestCase):
         self.assertEqual(parse_citation(document), "2024 INSC 123")
         self.assertEqual(parse_source_url(document), "https://indiankanoon.org/doc/123456/")
 
+    def test_supreme_court_ocr_header_and_reported_citation(self) -> None:
+        document = fixture(
+            "Abc_vs_State_on_6_July_2015_1.PDF",
+            "Abc vs State on 6 July, 2015\n"
+            "Equivalent citations: AIR 2015 SUPREME COURT 2569, (2015) 10 SCC 1\n"
+            "IN THE SUPRME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION",
+            source_group="archive_2015_2022",
+        )
+        self.assertEqual(parse_court(document), "Supreme Court")
+        self.assertEqual(parse_citation(document), "(2015) 10 SCC 1")
+
+    def test_cited_authority_is_not_used_as_the_current_case_citation(self) -> None:
+        document = fixture(
+            "Union_Of_India_vs_Ganpati_Dealcom_on_23_August_2022_1.PDF",
+            "Union of India vs Ganpati Dealcom on 23 August, 2022\n"
+            "Author: N.V. Ramana\nIN THE SUPREME COURT OF INDIA\n"
+            "The earlier decision reported in (2016) 3 SCC 183 was considered.",
+            source_group="supreme-court-2015-2022",
+        )
+        self.assertEqual(parse_citation(document), "")
+
 
 if __name__ == "__main__":
     unittest.main()

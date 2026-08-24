@@ -1,4 +1,4 @@
-# Citizen Legal AI
+# Nyayalens
 
 A sober, source-linked precedent retrieval prototype for lawyers and judicial researchers. It combines local semantic embeddings with SQLite full-text search, then fuses both rankings with reciprocal-rank fusion (RRF). Search runs without a paid API or API key.
 

@@ -1,4 +1,4 @@
-# Citizen Legal AI - Semantic Search Execution Plan
+# Nyayalens - Semantic Search Execution Plan
 
 ## 1. Outcome and non-negotiable scope
 

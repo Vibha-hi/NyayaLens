@@ -17,6 +17,13 @@ from urllib.parse import quote
 import numpy as np
 from fastembed import TextEmbedding
 
+from .case_analysis import (
+    VERIFY,
+    build_case_summary,
+    extract_case_stage,
+    extract_disposition,
+    infer_bench_strength,
+)
 from .models import EvidenceLocator, SearchFilters, SearchResponse, SearchResult
 
 
@@ -364,6 +371,80 @@ class SemanticEngine:
     def _rank_map(items: Iterable[RankedChunk]) -> dict[str, int]:
         return {item.chunk_id: item.rank for item in items}
 
+    def _case_full_text(self, case_id: str) -> str:
+        return " ".join(
+            str(self._chunks[chunk_id]["evidence"])
+            for chunk_id in self._chunks_by_case[case_id]
+        )
+
+    def _authority_adjustment(
+        self,
+        case_id: str,
+        chunk_id: str,
+        query: str,
+        query_signals: list[str],
+    ) -> tuple[float, list[str], str]:
+        """Return a small transparent reranking adjustment, never a confidence score."""
+
+        case = self._cases[case_id]
+        basis: list[str] = []
+        adjustment = 0.0
+        court_name = str(case.get("courtName", case["court"]))
+        query_lower = query.lower()
+
+        if case["court"] == "Supreme Court":
+            adjustment += 0.0008
+            basis.append("Supreme Court authority")
+        elif case["court"] == "High Court":
+            court_alias = re.sub(r"(?i)\s+high court.*$", "", court_name).strip().lower()
+            if court_name.lower() in query_lower or (len(court_alias) >= 5 and court_alias in query_lower):
+                adjustment += 0.0007
+                basis.append(f"Same named High Court: {court_name}")
+
+        bench_text = " ".join(
+            str(self._chunks[candidate_id]["evidence"])
+            for candidate_id in self._chunks_by_case[case_id][:3]
+        )
+        if case.get("benchSize") is not None:
+            bench_size = int(case.get("benchSize", 0))
+            bench_label = str(case.get("benchStrength", "Bench size not extracted"))
+        else:
+            bench = infer_bench_strength(bench_text)
+            bench_size = bench.size
+            bench_label = bench.label
+        if bench_size >= 5:
+            adjustment += 0.0005
+            basis.append(f"Larger binding bench: {bench_label}")
+        elif bench_size >= 3:
+            adjustment += 0.00035
+            basis.append(f"Larger bench: {bench_label}")
+        elif bench_size == 2:
+            adjustment += 0.0002
+            basis.append("Division bench")
+
+        year = int(case.get("year", 0) or 0)
+        if year:
+            adjustment += max(0.0, min(0.00025, (year - 2000) / 26 * 0.00025))
+            if year >= 2023:
+                basis.append(f"Recent authority ({year})")
+
+        case_issues = {str(issue).lower() for issue in case["legalIssues"]}
+        shared_issues = [signal for signal in query_signals if signal.lower() in case_issues]
+        if shared_issues:
+            adjustment += min(3, len(shared_issues)) * 0.00015
+            basis.append("Same procedural/legal issue: " + ", ".join(shared_issues[:3]))
+
+        query_sections = [signal for signal in query_signals if signal.startswith("Section ")]
+        chunk_text = str(self._chunks[chunk_id]["evidence"]).lower()
+        shared_sections = [section for section in query_sections if section.lower() in chunk_text]
+        if shared_sections:
+            adjustment += min(2, len(shared_sections)) * 0.00015
+            basis.append("Same statutory provision: " + ", ".join(shared_sections[:2]))
+
+        if not basis:
+            basis.append("No additional hierarchy boost; ranked on retrieval relevance")
+        return round(adjustment, 6), basis, bench_label
+
     def search(self, query: str, filters: SearchFilters, top_k: int) -> SearchResponse:
         started = time.perf_counter()
         if not is_legal_query(query):
@@ -371,7 +452,7 @@ class SemanticEngine:
                 runId=str(uuid.uuid4()),
                 corpusVersion=self.corpus_version,
                 modelVersion=self.model_version,
-                retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K})",
+                retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K}) + authority reranking",
                 extractedSignals=[],
                 latencyMs=round((time.perf_counter() - started) * 1000),
                 caseCount=self.case_count,
@@ -390,7 +471,7 @@ class SemanticEngine:
                 runId=str(uuid.uuid4()),
                 corpusVersion=self.corpus_version,
                 modelVersion=self.model_version,
-                retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K})",
+                retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K}) + authority reranking",
                 extractedSignals=[],
                 latencyMs=round((time.perf_counter() - started) * 1000),
                 caseCount=self.case_count,
@@ -411,9 +492,25 @@ class SemanticEngine:
         for chunk_id in ordered_chunks:
             case_id = self._chunks[chunk_id]["case_id"]
             best_by_case.setdefault(case_id, chunk_id)
+        rrf_case_rank = {
+            case_id: rank for rank, case_id in enumerate(best_by_case, start=1)
+        }
+
+        authority_by_case: dict[str, tuple[float, list[str], str]] = {}
+        for case_id, chunk_id in best_by_case.items():
+            authority_by_case[case_id] = self._authority_adjustment(
+                case_id, chunk_id, query, query_signals
+            )
+        ranked_cases = sorted(
+            best_by_case.items(),
+            key=lambda item: (
+                -(fused[item[1]] + authority_by_case[item[0]][0]),
+                item[0],
+            ),
+        )
 
         results: list[SearchResult] = []
-        for case_id, chunk_id in list(best_by_case.items())[:top_k]:
+        for case_id, chunk_id in ranked_cases[:top_k]:
             case = self._cases[case_id]
             chunk = self._chunks[chunk_id]
             case_signals = {signal.lower() for signal in case["legalIssues"]}
@@ -428,6 +525,53 @@ class SemanticEngine:
                 reason_codes.append("Active filter match")
 
             highlight = [token for token in lexical_tokens(query) if token in chunk["evidence"].lower()][:5]
+            full_case_text = self._case_full_text(case_id)
+            stored_disposition = all(
+                case.get(field)
+                for field in (
+                    "matterStatus", "trialStatus", "winner", "caseOutcome",
+                    "outcomeRelief", "outcomeEvidence",
+                )
+            )
+            if stored_disposition:
+                matter_status = str(case["matterStatus"])
+                trial_status = str(case["trialStatus"])
+                winner = str(case["winner"])
+                case_outcome = str(case["caseOutcome"])
+                outcome_relief = str(case["outcomeRelief"])
+                outcome_evidence = str(case["outcomeEvidence"])
+            else:
+                disposition = extract_disposition(full_case_text)
+                matter_status = disposition.matter_status
+                trial_status = disposition.trial_status
+                winner = disposition.winner
+                case_outcome = disposition.case_outcome
+                outcome_relief = disposition.outcome_relief
+                outcome_evidence = disposition.evidence
+
+            if all(case.get(field) for field in ("caseStage", "caseStageConfidence", "caseStageEvidence")):
+                case_stage = str(case["caseStage"])
+                stage_confidence = str(case["caseStageConfidence"])
+                stage_evidence = str(case["caseStageEvidence"])
+            else:
+                stage = extract_case_stage(full_case_text, str(case["posture"]), list(case["legalIssues"]))
+                case_stage = stage.stage
+                stage_confidence = stage.confidence
+                stage_evidence = stage.evidence
+            if case_stage == "Trial ongoing":
+                trial_status = "Trial ongoing"
+            elif case_stage.startswith("Trial completed"):
+                trial_status = "Trial completed"
+
+            authority_score, authority_basis, bench_strength = authority_by_case[case_id]
+
+            relevance_basis = list(reason_codes)
+            if chunk_id in dense_ranks:
+                relevance_basis.append(f"Dense semantic rank #{dense_ranks[chunk_id]}")
+            if chunk_id in lexical_ranks:
+                relevance_basis.append(f"Lexical term rank #{lexical_ranks[chunk_id]}")
+            relevance_basis.append(f"Base hybrid RRF rank #{rrf_case_rank[case_id]}")
+            relevance_basis.append(f"Authority-aware final rank #{len(results) + 1}")
             results.append(
                 SearchResult(
                     id=case_id,
@@ -441,8 +585,21 @@ class SemanticEngine:
                     legalIssues=case["legalIssues"],
                     filterIssues=case["legalIssues"],
                     matchedEvidence=chunk["evidence"],
+                    caseSummary=build_case_summary(chunk["evidence"], query, outcome_evidence),
                     highlightPhrases=highlight,
-                    outcome="No generated outcome. Review the linked judgment and cited passage.",
+                    outcome=case_outcome,
+                    matterStatus=matter_status,
+                    trialStatus=trial_status,
+                    winner=winner,
+                    caseStage=case_stage,
+                    caseStageConfidence=stage_confidence,
+                    caseStageEvidence=stage_evidence,
+                    outcomeRelief=outcome_relief,
+                    outcomeEvidence=outcome_evidence,
+                    relevanceBasis=relevance_basis,
+                    authorityScore=authority_score,
+                    authorityBasis=authority_basis,
+                    benchStrength=bench_strength,
                     whyItMatched=reason_codes,
                     explanation={
                         "sharedFacts": chunk.get("context")
@@ -458,7 +615,7 @@ class SemanticEngine:
                     reasonCodes=reason_codes,
                     denseRank=dense_ranks.get(chunk_id),
                     lexicalRank=lexical_ranks.get(chunk_id),
-                    retrievalScore=round(fused[chunk_id], 6),
+                    retrievalScore=round(fused[chunk_id] + authority_score, 6),
                 )
             )
 
@@ -466,7 +623,7 @@ class SemanticEngine:
             runId=str(uuid.uuid4()),
             corpusVersion=self.corpus_version,
             modelVersion=self.model_version,
-            retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K})",
+            retrievalMethod=f"Dense cosine + SQLite FTS5 + RRF(k={RRF_K}) + authority reranking",
             extractedSignals=query_signals,
             latencyMs=round((time.perf_counter() - started) * 1000),
             caseCount=self.case_count,

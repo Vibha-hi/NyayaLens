@@ -23,6 +23,16 @@ class SemanticEngineSearchTests(unittest.TestCase):
         )
         self.assertTrue(response.results)
         self.assertIn("bail", response.results[0].matchedEvidence.lower())
+        self.assertTrue(response.results[0].caseSummary)
+        self.assertTrue(response.results[0].trialStatus)
+        self.assertTrue(response.results[0].winner)
+        self.assertTrue(response.results[0].relevanceBasis)
+        self.assertTrue(response.results[0].caseStage)
+        self.assertIn(response.results[0].caseStageConfidence, {"High", "Medium", "Low"})
+        self.assertTrue(response.results[0].caseStageEvidence)
+        self.assertTrue(response.results[0].outcomeRelief)
+        self.assertTrue(response.results[0].authorityBasis)
+        self.assertGreaterEqual(response.results[0].authorityScore, 0)
         self.assertTrue(response.results[0].sourceUrl)
 
     def test_year_filter_is_applied_to_both_retrieval_branches(self) -> None:

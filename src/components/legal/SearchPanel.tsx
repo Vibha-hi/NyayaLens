@@ -193,8 +193,8 @@ export function SearchPanel({
 
           {/* Disclaimer */}
           <p className="mt-5 text-[11.5px] leading-relaxed text-muted-foreground/80 border-t border-border/40 pt-3">
-            <strong>Disclaimer:</strong> Citizen Legal AI is an assistive legal research prototype.
-            Use anonymized facts only. Rankings are retrieval signals—not legal accuracy—and every
+            <strong>Disclaimer:</strong> Nyayalens is an assistive legal research prototype. Use
+            anonymized facts only. Rankings are retrieval signals—not legal accuracy—and every
             result must be verified against the original judgment.
           </p>
         </form>

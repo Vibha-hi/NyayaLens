@@ -28,6 +28,8 @@ data/incoming/
 data/processed/
 services/retrieval/data/import/
 .release/
+cases/
+tmp/
 
 # Wrangler / Cloudflare
 .wrangler/

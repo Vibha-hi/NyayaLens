@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Citizen Legal AI — Precedent Retrieval Prototype" },
+      { title: "Nyayalens — Precedent Retrieval Prototype" },
       {
         name: "description",
         content:
           "A source-linked hybrid legal retrieval prototype using local semantic embeddings and exact legal-term matching.",
       },
-      { property: "og:title", content: "Citizen Legal AI — Precedent Retrieval Prototype" },
+      { property: "og:title", content: "Nyayalens — Precedent Retrieval Prototype" },
       {
         property: "og:description",
         content:

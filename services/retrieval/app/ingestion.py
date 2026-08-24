@@ -11,6 +11,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterable
 
+from .case_analysis import extract_case_stage, extract_disposition, infer_bench_strength
+
 from pypdf import PdfReader
 
 
@@ -94,6 +96,11 @@ NEUTRAL_CITATION_PATTERNS = (
     re.compile(r"\b(20\d{2}\s+INSC\s+\d+)\b", re.I),
     re.compile(r"\b(20\d{2}\s*:\s*[A-Z][A-Z-]{1,12}\s*:\s*\d+)\b", re.I),
     re.compile(r"\[(20\d{2}\s*:\s*[A-Z][A-Z-]{1,12}\s*:\s*\d+)\]", re.I),
+)
+REPORTED_CITATION_PATTERNS = (
+    re.compile(r"(\(20\d{2}\)\s+\d+\s+SCC\s+\d+)\b", re.I),
+    re.compile(r"\b(20\d{2}\s+SCC\s+ON(?:LINE|L)\s+SC\s+\d+)\b", re.I),
+    re.compile(r"\b(AIR\s+20\d{2}\s+(?:SC|SUPREME\s+COURT)\s+\d+)\b", re.I),
 )
 
 
@@ -291,6 +298,11 @@ def parse_date(document: ExtractedPdf) -> str:
 
 def parse_court(document: ExtractedPdf) -> str:
     if document.source_group.startswith("supreme-court"):
+        return "Supreme Court"
+    head = document.text[:12_000]
+    if re.search(r"(?i)\bIN\s+THE\s+SUPR[A-Z]*\s+COURT\s+OF\s+INDIA\b", head):
+        return "Supreme Court"
+    if re.search(r"(?im)^\s*Equivalent\s+citations?\s*:.*\b(?:SUPREME\s+COURT|SCC)\b", head):
         return "Supreme Court"
     match = re.match(r"\d+_([A-Z]{4})", document.path.name)
     return COURT_CODES.get(match.group(1), "High Court") if match else "High Court"
@@ -491,6 +503,19 @@ def parse_citation(document: ExtractedPdf) -> str:
         match = pattern.search(head)
         if match:
             return re.sub(r"\s*:\s*", ":", re.sub(r"\s+", " ", match.group(1))).upper()
+    equivalent = re.search(
+        r"(?is)\bEquivalent\s+citations?\s*:\s*(.{1,3000}?)"
+        r"(?=\n\s*(?:Author|Bench)\s*:|\n\s*(?:REPORTABLE|NON[- ]REPORTABLE)|\[\[PAGE|\Z)",
+        head,
+    )
+    if not equivalent:
+        return ""
+    reported_citations = equivalent.group(1)
+    for pattern in REPORTED_CITATION_PATTERNS:
+        match = pattern.search(reported_citations)
+        if match:
+            citation = re.sub(r"\s+", " ", match.group(1)).upper()
+            return re.sub(r"SUPREME\s+COURT", "SC", citation)
     return ""
 
 
@@ -667,6 +692,13 @@ def build_outputs(documents: list[ExtractedPdf]) -> dict[str, Any]:
             cleaned = clean_judgment_text(document.text, title)
             chunks = chunk_text(cleaned, title, citation, issues)
             if chunks:
+                disposition = extract_disposition(cleaned)
+                case_stage = extract_case_stage(
+                    cleaned,
+                    f"Judgment or order in {case_number or 'case number not extracted'}",
+                    issues,
+                )
+                bench = infer_bench_strength(cleaned)
                 cases.append(
                     {
                         "id": identifier,
@@ -681,6 +713,18 @@ def build_outputs(documents: list[ExtractedPdf]) -> dict[str, Any]:
                         "legalIssues": issues,
                         "sourceUrl": source_url,
                         "pdfPath": document.relative_path,
+                        "matterStatus": disposition.matter_status,
+                        "trialStatus": disposition.trial_status,
+                        "winner": disposition.winner,
+                        "caseOutcome": disposition.case_outcome,
+                        "outcomeRelief": disposition.outcome_relief,
+                        "outcomeEvidence": disposition.evidence,
+                        "caseStage": case_stage.stage,
+                        "caseStageConfidence": case_stage.confidence,
+                        "caseStageEvidence": case_stage.evidence,
+                        "benchStrength": bench.label,
+                        "benchSize": bench.size,
+                        "benchEvidence": bench.evidence,
                         "chunks": [{**chunk, "id": f"{identifier}-{chunk['id']}"} for chunk in chunks],
                     }
                 )
