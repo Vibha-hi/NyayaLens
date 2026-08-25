@@ -4,6 +4,13 @@ import type { Precedent } from "@/data/precedents";
 export const searchFiltersSchema = z.object({
   court: z.enum(["All Courts", "Supreme Court", "High Court"]),
   year: z.union([z.literal("All Years"), z.string().regex(/^(19|20)\d{2}$/)]),
+  outcome: z.enum([
+    "Any Outcome",
+    "Petitioner / Appellant side succeeded",
+    "Respondent / State side succeeded",
+    "Partial / mixed relief",
+    "Remanded / no final winner",
+  ]),
   issue: z.enum([
     "All Issues",
     "Regular Bail",

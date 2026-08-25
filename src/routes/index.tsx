@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/legal/Navbar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
@@ -7,7 +7,15 @@ import { SearchPanel } from "@/components/legal/SearchPanel";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/legal/FilterPanel";
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
 import { ResultSkeleton } from "@/components/legal/ResultSkeleton";
-import { DEFAULT_QUERY, type LegalCategory, type Precedent } from "@/data/precedents";
+import {
+  COURTS,
+  DEFAULT_QUERY,
+  FILTER_ISSUES,
+  OUTCOME_FILTERS,
+  YEARS,
+  type LegalCategory,
+  type Precedent,
+} from "@/data/precedents";
 import { searchCasesFn } from "@/api/search";
 import type { SearchEngineResponse } from "@/contracts/search";
 
@@ -46,11 +54,49 @@ function Index() {
   const [searchMeta, setSearchMeta] = useState<Omit<SearchEngineResponse, "results"> | null>(null);
   const latestRequestId = useRef(0);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const savedQuery = params.get("case-description");
+    const savedCourt = params.get("court");
+    const savedYear = params.get("year");
+    const savedIssue = params.get("issue");
+    const savedOutcome = params.get("outcome");
+    if (savedQuery) setQuery(savedQuery);
+    setFilters((current) => ({
+      ...current,
+      court:
+        savedCourt && (["All Courts", ...COURTS] as string[]).includes(savedCourt)
+          ? savedCourt
+          : current.court,
+      year:
+        savedYear && (["All Years", ...YEARS] as string[]).includes(savedYear)
+          ? savedYear
+          : current.year,
+      issue:
+        savedIssue && (["All Issues", ...FILTER_ISSUES] as string[]).includes(savedIssue)
+          ? savedIssue
+          : current.issue,
+      outcome:
+        savedOutcome && (["Any Outcome", ...OUTCOME_FILTERS] as string[]).includes(savedOutcome)
+          ? savedOutcome
+          : current.outcome,
+    }));
+  }, []);
+
   const executeSearch = async (currentQuery: string, currentFilters: Filters) => {
     const requestId = ++latestRequestId.current;
     setIsSearching(true);
     setHasSearched(true);
     setSearchError(null);
+    const urlParams = new URLSearchParams();
+    urlParams.set("case-description", currentQuery);
+    if (currentFilters.court !== "All Courts") urlParams.set("court", currentFilters.court);
+    if (currentFilters.year !== "All Years") urlParams.set("year", currentFilters.year);
+    if (currentFilters.issue !== "All Issues") urlParams.set("issue", currentFilters.issue);
+    if (currentFilters.outcome !== "Any Outcome") {
+      urlParams.set("outcome", currentFilters.outcome);
+    }
+    window.history.replaceState(null, "", `${window.location.pathname}?${urlParams.toString()}`);
     try {
       const data = await searchCasesFn({
         data: { query: currentQuery, filters: currentFilters, topK: 10 },
@@ -111,6 +157,7 @@ function Index() {
     setResults([]);
     setSearchMeta(null);
     setSearchError(null);
+    window.history.replaceState(null, "", window.location.pathname);
   };
 
   const scrollToSearch = () => {
@@ -153,6 +200,8 @@ function Index() {
           isSearching={isSearching}
           selectedCategory={activeCategory}
           onSelectCategory={handleSelectCategory}
+          filters={filters}
+          onFiltersChange={setFilters}
         />
 
         <div className="mx-auto max-w-[1380px] px-4 py-8 sm:px-6">

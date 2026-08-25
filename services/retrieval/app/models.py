@@ -9,6 +9,7 @@ class SearchFilters(BaseModel):
     court: str = "All Courts"
     year: str = "All Years"
     issue: str = "All Issues"
+    outcome: str = "Any Outcome"
 
     @field_validator("court")
     @classmethod
@@ -57,6 +58,20 @@ class SearchFilters(BaseModel):
         }
         if value not in allowed:
             raise ValueError("Unsupported legal-issue filter")
+        return value
+
+    @field_validator("outcome")
+    @classmethod
+    def validate_outcome(cls, value: str) -> str:
+        allowed = {
+            "Any Outcome",
+            "Petitioner / Appellant side succeeded",
+            "Respondent / State side succeeded",
+            "Partial / mixed relief",
+            "Remanded / no final winner",
+        }
+        if value not in allowed:
+            raise ValueError("Unsupported outcome filter")
         return value
 
 

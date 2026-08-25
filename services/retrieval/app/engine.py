@@ -128,6 +128,7 @@ class SemanticEngine:
             case_id = chunk["case_id"]
             self._chunks_by_case[case_id].append(chunk_id)
             self._chunk_search_text[chunk_id] = self._chunk_index_text(self._cases[case_id], chunk).lower()
+        self._disposition_cache: dict[str, tuple[str, str, str, str, str, str]] = {}
         self._ensure_index()
         self._load_vectors()
 
@@ -377,6 +378,49 @@ class SemanticEngine:
             for chunk_id in self._chunks_by_case[case_id]
         )
 
+    def _case_disposition(self, case_id: str) -> tuple[str, str, str, str, str, str]:
+        cached = self._disposition_cache.get(case_id)
+        if cached:
+            return cached
+        case = self._cases[case_id]
+        stored_fields = (
+            "matterStatus", "trialStatus", "winner", "caseOutcome",
+            "outcomeRelief", "outcomeEvidence",
+        )
+        if all(case.get(field) for field in stored_fields):
+            values = tuple(str(case[field]) for field in stored_fields)
+        else:
+            conclusion_text = " ".join(
+                str(self._chunks[chunk_id]["evidence"])
+                for chunk_id in self._chunks_by_case[case_id][-8:]
+            )
+            disposition = extract_disposition(conclusion_text)
+            values = (
+                disposition.matter_status,
+                disposition.trial_status,
+                disposition.winner,
+                disposition.case_outcome,
+                disposition.outcome_relief,
+                disposition.evidence,
+            )
+        self._disposition_cache[case_id] = values  # type: ignore[assignment]
+        return values  # type: ignore[return-value]
+
+    @staticmethod
+    def _matches_outcome_filter(selected: str, winner: str, matter_status: str) -> bool:
+        if selected == "Any Outcome":
+            return True
+        lowered = winner.lower()
+        if selected == "Petitioner / Appellant side succeeded":
+            return any(role in lowered for role in ("petitioner", "appellant", "applicant", "accused"))
+        if selected == "Respondent / State side succeeded":
+            return "respondent" in lowered or "state" in lowered
+        if selected == "Partial / mixed relief":
+            return "mixed" in lowered or "partial" in lowered
+        if selected == "Remanded / no final winner":
+            return "remand" in lowered or "remand" in matter_status.lower() or "no final winner" in lowered
+        return False
+
     def _authority_adjustment(
         self,
         case_id: str,
@@ -459,8 +503,9 @@ class SemanticEngine:
                 chunkCount=self.chunk_count,
                 results=[],
             )
-        dense = self._dense(query, filters)
-        lexical = self._lexical(query, filters)
+        candidate_limit = 300 if filters.outcome != "Any Outcome" else 100
+        dense = self._dense(query, filters, limit=candidate_limit)
+        lexical = self._lexical(query, filters, limit=candidate_limit)
         query_signals = extract_signals(query)
 
         # Do not manufacture plausible-looking legal results for an unrelated query.
@@ -492,6 +537,16 @@ class SemanticEngine:
         for chunk_id in ordered_chunks:
             case_id = self._chunks[chunk_id]["case_id"]
             best_by_case.setdefault(case_id, chunk_id)
+        if filters.outcome != "Any Outcome":
+            best_by_case = {
+                case_id: chunk_id
+                for case_id, chunk_id in best_by_case.items()
+                if self._matches_outcome_filter(
+                    filters.outcome,
+                    self._case_disposition(case_id)[2],
+                    self._case_disposition(case_id)[0],
+                )
+            }
         rrf_case_rank = {
             case_id: rank for rank, case_id in enumerate(best_by_case, start=1)
         }
@@ -521,33 +576,26 @@ class SemanticEngine:
             if chunk_id in lexical_ranks:
                 reason_codes.append("Exact legal-term match")
             reason_codes.extend(f"Shared issue: {signal}" for signal in shared[:3])
-            if filters.court != "All Courts" or filters.year != "All Years" or filters.issue != "All Issues":
+            if (
+                filters.court != "All Courts"
+                or filters.year != "All Years"
+                or filters.issue != "All Issues"
+                or filters.outcome != "Any Outcome"
+            ):
                 reason_codes.append("Active filter match")
+            if filters.outcome != "Any Outcome":
+                reason_codes.append(f"Requested outcome match: {filters.outcome}")
 
             highlight = [token for token in lexical_tokens(query) if token in chunk["evidence"].lower()][:5]
             full_case_text = self._case_full_text(case_id)
-            stored_disposition = all(
-                case.get(field)
-                for field in (
-                    "matterStatus", "trialStatus", "winner", "caseOutcome",
-                    "outcomeRelief", "outcomeEvidence",
-                )
-            )
-            if stored_disposition:
-                matter_status = str(case["matterStatus"])
-                trial_status = str(case["trialStatus"])
-                winner = str(case["winner"])
-                case_outcome = str(case["caseOutcome"])
-                outcome_relief = str(case["outcomeRelief"])
-                outcome_evidence = str(case["outcomeEvidence"])
-            else:
-                disposition = extract_disposition(full_case_text)
-                matter_status = disposition.matter_status
-                trial_status = disposition.trial_status
-                winner = disposition.winner
-                case_outcome = disposition.case_outcome
-                outcome_relief = disposition.outcome_relief
-                outcome_evidence = disposition.evidence
+            (
+                matter_status,
+                trial_status,
+                winner,
+                case_outcome,
+                outcome_relief,
+                outcome_evidence,
+            ) = self._case_disposition(case_id)
 
             if all(case.get(field) for field in ("caseStage", "caseStageConfidence", "caseStageEvidence")):
                 case_stage = str(case["caseStage"])

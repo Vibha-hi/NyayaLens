@@ -132,5 +132,12 @@ export const YEARS = [
 
 export const COURTS = ["Supreme Court", "High Court"] as const;
 
+export const OUTCOME_FILTERS = [
+  "Petitioner / Appellant side succeeded",
+  "Respondent / State side succeeded",
+  "Partial / mixed relief",
+  "Remanded / no final winner",
+] as const;
+
 export const DEFAULT_QUERY =
   "The applicant seeks regular bail after prolonged custody. The investigation is complete and the prosecution relies mainly on documentary evidence. There is no allegation that the applicant may abscond or influence witnesses, and the trial is unlikely to conclude soon.";

@@ -29,6 +29,12 @@ class EngineHelperTests(unittest.TestCase):
     def test_rrf_constant_is_documented_default(self) -> None:
         self.assertEqual(RRF_K, 60)
 
+    def test_outcome_filter_validation_and_side_mapping(self) -> None:
+        filters = SearchFilters(outcome="Petitioner / Appellant side succeeded")
+        self.assertEqual(filters.outcome, "Petitioner / Appellant side succeeded")
+        with self.assertRaises(ValueError):
+            SearchFilters(outcome="Petitioner definitely wins")
+
     def test_legal_domain_gate(self) -> None:
         self.assertTrue(is_legal_query("Can an accused receive bail under Section 439?"))
         self.assertFalse(is_legal_query("Banana recipes and ocean weather forecasts"))

@@ -8,8 +8,18 @@ import {
   Lightbulb,
   Shield,
   Scale,
+  SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react";
-import { CATEGORIES, DEFAULT_QUERY, type LegalCategory } from "@/data/precedents";
+import {
+  CATEGORIES,
+  COURTS,
+  DEFAULT_QUERY,
+  OUTCOME_FILTERS,
+  YEARS,
+  type LegalCategory,
+} from "@/data/precedents";
+import type { Filters } from "@/components/legal/FilterPanel";
 
 interface SearchPanelProps {
   query: string;
@@ -19,6 +29,8 @@ interface SearchPanelProps {
   isSearching: boolean;
   selectedCategory?: LegalCategory;
   onSelectCategory?: (category: LegalCategory) => void;
+  filters: Filters;
+  onFiltersChange: (filters: Filters) => void;
 }
 
 const HINTS = [
@@ -36,9 +48,17 @@ export function SearchPanel({
   isSearching,
   selectedCategory,
   onSelectCategory,
+  filters,
+  onFiltersChange,
 }: SearchPanelProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const isEmpty = query.trim().length === 0;
   const wordCount = query.trim().length === 0 ? 0 : query.trim().split(/\s+/).length;
+  const activeAdvancedCount = [
+    filters.court !== "All Courts",
+    filters.year !== "All Years",
+    filters.outcome !== "Any Outcome",
+  ].filter(Boolean).length;
 
   const handleApplySample = (sampleQuery: string, catId: LegalCategory) => {
     onQueryChange(sampleQuery);
@@ -76,7 +96,10 @@ export function SearchPanel({
           className="mt-8 max-w-4xl rounded-2xl border-2 border-border bg-surface p-5 sm:p-7 shadow-lg transition-all focus-within:border-brand-blue focus-within:ring-4 focus-within:ring-brand-blue/15"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!isEmpty) onSearch();
+            if (!isEmpty) {
+              setAdvancedOpen(false);
+              onSearch();
+            }
           }}
         >
           {/* Label + Sample Trigger */}
@@ -173,6 +196,119 @@ export function SearchPanel({
                   </>
                 )}
               </button>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen((open) => !open)}
+                  aria-expanded={advancedOpen}
+                  aria-controls="advanced-search-panel"
+                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-[13.5px] font-semibold transition-colors ${
+                    advancedOpen || activeAdvancedCount > 0
+                      ? "border-brand-blue bg-brand-blue/8 text-navy"
+                      : "border-border bg-background text-navy hover:bg-accent"
+                  }`}
+                >
+                  <SlidersHorizontal className="size-4 text-brand-blue" aria-hidden="true" />
+                  <span>Advanced search</span>
+                  {activeAdvancedCount > 0 && (
+                    <span className="rounded-full bg-navy px-1.5 py-0.5 text-[10px] text-white">
+                      {activeAdvancedCount}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`size-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {advancedOpen && (
+                  <div
+                    id="advanced-search-panel"
+                    className="absolute top-[calc(100%+0.6rem)] left-0 z-30 w-[min(23rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-4 shadow-xl"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[13px] font-semibold text-navy">Pre-select search scope</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          These conditions are enforced by the retrieval engine.
+                        </p>
+                      </div>
+                      {activeAdvancedCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onFiltersChange({
+                              ...filters,
+                              court: "All Courts",
+                              year: "All Years",
+                              outcome: "Any Outcome",
+                            })
+                          }
+                          className="text-[11px] font-medium text-brand-blue hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                      <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
+                        Court level
+                        <select
+                          value={filters.court}
+                          onChange={(event) =>
+                            onFiltersChange({ ...filters, court: event.target.value })
+                          }
+                          className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
+                        >
+                          <option>All Courts</option>
+                          {COURTS.map((court) => (
+                            <option key={court}>{court}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
+                        Decision year
+                        <select
+                          value={filters.year}
+                          onChange={(event) =>
+                            onFiltersChange({ ...filters, year: event.target.value })
+                          }
+                          className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
+                        >
+                          <option>All Years</option>
+                          {YEARS.map((year) => (
+                            <option key={year}>{year}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
+                        Requested outcome
+                        <select
+                          value={filters.outcome}
+                          onChange={(event) =>
+                            onFiltersChange({ ...filters, outcome: event.target.value })
+                          }
+                          className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
+                        >
+                          <option>Any Outcome</option>
+                          {OUTCOME_FILTERS.map((outcome) => (
+                            <option key={outcome}>{outcome}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <p className="mt-3 rounded-md bg-muted/60 px-2.5 py-2 text-[10.5px] leading-relaxed text-muted-foreground">
+                      “Petitioner / Appellant” also covers applicants and accused persons seeking
+                      relief. Unclear outcomes are excluded when an outcome is selected.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"

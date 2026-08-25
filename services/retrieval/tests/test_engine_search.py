@@ -64,6 +64,24 @@ class SemanticEngineSearchTests(unittest.TestCase):
         )
         self.assertEqual(response.results, [])
 
+    def test_requested_outcome_side_is_enforced(self) -> None:
+        selected = "Petitioner / Appellant side succeeded"
+        response = self.engine.search(
+            "The accused seeks regular bail after prolonged custody because the trial remains delayed.",
+            SearchFilters(outcome=selected),
+            5,
+        )
+        self.assertTrue(response.results)
+        self.assertTrue(
+            all(
+                self.engine._matches_outcome_filter(selected, result.winner, result.matterStatus)
+                for result in response.results
+            )
+        )
+        self.assertTrue(
+            all(any("Requested outcome match" in reason for reason in result.reasonCodes) for result in response.results)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

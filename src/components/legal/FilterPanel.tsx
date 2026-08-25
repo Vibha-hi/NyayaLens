@@ -1,15 +1,17 @@
-import { COURTS, FILTER_ISSUES, YEARS } from "@/data/precedents";
+import { COURTS, FILTER_ISSUES, OUTCOME_FILTERS, YEARS } from "@/data/precedents";
 
 export interface Filters {
   court: string;
   year: string;
   issue: string;
+  outcome: string;
 }
 
 export const DEFAULT_FILTERS: Filters = {
   court: "All Courts",
   year: "All Years",
   issue: "All Issues",
+  outcome: "Any Outcome",
 };
 
 interface FilterPanelProps {
@@ -76,6 +78,13 @@ export function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
         options={["All Years", ...YEARS]}
         value={filters.year}
         onSelect={(year) => onChange({ ...filters, year })}
+      />
+      <Group
+        legend="Requested outcome"
+        name="outcome"
+        options={["Any Outcome", ...OUTCOME_FILTERS]}
+        value={filters.outcome}
+        onSelect={(outcome) => onChange({ ...filters, outcome })}
       />
       <Group
         legend="Legal issue"
