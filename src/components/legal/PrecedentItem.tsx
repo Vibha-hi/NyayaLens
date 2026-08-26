@@ -265,7 +265,7 @@ function WinnerBadge({ value }: { value: string }) {
     >
       <Icon className="size-[13px] shrink-0" aria-hidden="true" />
       <div className="flex items-center gap-1">
-        <span className="text-[10px] uppercase tracking-[0.04em] opacity-75">OUTCOME</span>
+        <span className="text-[10px] uppercase tracking-[0.04em] opacity-75">RESULT</span>
         <span className="text-[12.5px] font-semibold leading-none pt-px">{shortened}</span>
       </div>
     </div>
@@ -461,7 +461,7 @@ export function PrecedentItem({
                   }}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-brand-blue">
-                    Recorded outcome
+                    Recorded result
                   </span>
                   <span
                     className={`mt-0.5 text-[15px] font-semibold leading-snug ${isAbsent ? "opacity-80 font-medium" : "opacity-100"}`}
@@ -534,7 +534,7 @@ export function PrecedentItem({
               </div>
               <div>
                 <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  Outcome evidence
+                  Result evidence
                 </dt>
                 <dd className="mt-1 text-foreground">{precedent.outcomeEvidence}</dd>
               </div>
