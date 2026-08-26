@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ExternalLink, Bookmark } from "lucide-react";
+import { ChevronDown, ExternalLink, Bookmark, CheckCircle2, XCircle, Clock, HelpCircle, PieChart, CornerUpLeft } from "lucide-react";
 import type { Precedent } from "@/data/precedents";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
