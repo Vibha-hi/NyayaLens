@@ -197,28 +197,11 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 </div>
               )}
             </div>
-
-            {/* Link to Precedent Search */}
-            {onSearchFocus && (
-              <button
-                type="button"
-                onClick={onSearchFocus}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] font-medium text-foreground/80 hover:bg-accent hover:text-navy transition-colors"
-              >
-                <Search className="size-4 text-muted-foreground" />
-                <span>Search Precedents</span>
-              </button>
-            )}
           </nav>
         </div>
 
         {/* Right Actions (Status pill & Search Jump) */}
         <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-navy font-semibold">Imported judgment corpus</span>
-          </div>
-
           {onSearchFocus && (
             <button
               type="button"
