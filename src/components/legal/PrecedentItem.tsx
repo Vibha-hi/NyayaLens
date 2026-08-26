@@ -265,7 +265,7 @@ function WinnerBadge({ value }: { value: string }) {
     >
       <Icon className="size-[13px] shrink-0" aria-hidden="true" />
       <div className="flex items-center gap-1">
-        <span className="text-[10px] uppercase tracking-[0.04em] opacity-75">WINNER</span>
+        <span className="text-[10px] uppercase tracking-[0.04em] opacity-75">OUTCOME</span>
         <span className="text-[12.5px] font-semibold leading-none pt-px">{shortened}</span>
       </div>
     </div>
@@ -434,11 +434,43 @@ export function PrecedentItem({
             )}
           </div>
 
-          {!isCompact && (
-            <p className="mt-3 text-[13px] text-foreground">
-              <span className="font-medium text-navy">Recorded outcome:</span> {precedent.outcome}
-            </p>
-          )}
+          {!isCompact &&
+            (() => {
+              let displayOutcome = precedent.outcome || "";
+              let isAbsent = false;
+              const lower = displayOutcome.toLowerCase();
+              if (
+                !displayOutcome ||
+                lower === "not stated" ||
+                lower === "not stated - verify judgment"
+              ) {
+                displayOutcome = "Not stated — verify against source judgment";
+                isAbsent = true;
+              } else {
+                displayOutcome = displayOutcome.charAt(0).toUpperCase() + displayOutcome.slice(1);
+              }
+
+              return (
+                <div
+                  className="my-[12px] flex flex-col rounded-r-[8px] rounded-l-none border border-l-[3px] px-[14px] py-[10px]"
+                  style={{
+                    backgroundColor: "var(--outcome-bg)",
+                    borderColor: "var(--outcome-border)",
+                    borderLeftColor: "var(--brand-blue)",
+                    color: "var(--outcome-text)",
+                  }}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-brand-blue">
+                    Recorded outcome
+                  </span>
+                  <span
+                    className={`mt-0.5 text-[15px] font-semibold leading-snug ${isAbsent ? "opacity-80 font-medium" : "opacity-100"}`}
+                  >
+                    {displayOutcome}
+                  </span>
+                </div>
+              );
+            })()}
 
           {!isCompact && (
             <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">

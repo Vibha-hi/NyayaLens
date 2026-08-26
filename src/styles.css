@@ -151,6 +151,10 @@
   --winner-purple-fg: #4A2160;
   --winner-amber-bg: #FAEEDA;
   --winner-amber-fg: #7A5410;
+
+  --outcome-bg: #F2F1EC;
+  --outcome-border: #DDDBD2;
+  --outcome-text: #2A2A26;
 }
 
 .dark {
@@ -216,6 +220,10 @@
   --winner-purple-fg: #C79BE0;
   --winner-amber-bg: #412402;
   --winner-amber-fg: #FAC775;
+
+  --outcome-bg: #26262A;
+  --outcome-border: #3E3E44;
+  --outcome-text: #E4E2DA;
 }
 
 @layer base {
