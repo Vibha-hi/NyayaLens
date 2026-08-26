@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Scale,
   ShieldAlert,
@@ -15,8 +16,10 @@ import {
   Layers,
   History,
   BookOpen,
+  UserCircle,
 } from "lucide-react";
 import { CATEGORIES, type LegalCategory } from "@/data/precedents";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
   activeCategory: LegalCategory;
@@ -35,6 +38,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: NavbarProps) {
+  const { user, profile } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -228,7 +232,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
           </nav>
         </div>
 
-        {/* Right Actions (Status pill & Search Jump) */}
+        {/* Right Actions (Status pill, Search Jump & Auth) */}
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -244,6 +248,25 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
               <Search className="size-3.5 text-saffron" />
               <span>Describe Case</span>
             </button>
+          )}
+
+          {/* Auth: Profile avatar or Sign In */}
+          {user ? (
+            <Link
+              to="/profile"
+              className="flex size-9 items-center justify-center rounded-full bg-navy text-[12px] font-bold text-saffron shadow-sm hover:bg-navy/90 transition-colors"
+              title="My Workspace"
+            >
+              {profile?.initials || user.email?.[0]?.toUpperCase() || "?"}
+            </Link>
+          ) : (
+            <Link
+              to="/auth"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] font-medium text-navy hover:bg-accent transition-colors"
+            >
+              <UserCircle className="size-4 text-brand-blue" />
+              Sign In
+            </Link>
           )}
 
           {/* Mobile hamburger toggle */}

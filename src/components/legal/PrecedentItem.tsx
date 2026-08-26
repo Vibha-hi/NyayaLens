@@ -1,5 +1,10 @@
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronDown, ExternalLink, Bookmark } from "lucide-react";
 import type { Precedent } from "@/data/precedents";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { SaveCaseModal } from "@/components/legal/SaveCaseModal";
 
 function HighlightedEvidence({ text, phrases }: { text: string; phrases: string[] }) {
   const escaped = phrases.map((phrase) => phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -28,6 +33,31 @@ interface PrecedentItemProps {
 }
 
 export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Check if case is already saved by this user
+  useEffect(() => {
+    if (!user) { setIsSaved(false); return; }
+    supabase
+      .from("saved_cases")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("case_id", precedent.id)
+      .limit(1)
+      .then(({ data }) => setIsSaved((data ?? []).length > 0));
+  }, [user, precedent.id]);
+
+  const handleSaveClick = () => {
+    if (!user) {
+      navigate({ to: "/auth" });
+      return;
+    }
+    setShowSaveModal(true);
+  };
+
   const panelId = `why-${precedent.id}`;
   const uncertainStage = precedent.caseStageConfidence === "Low";
   const uncertainTrial = precedent.trialStatus.toLowerCase().includes("verify");
@@ -37,6 +67,7 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
     precedent.outcomeRelief.toLowerCase().includes("verify");
 
   return (
+    <>
     <article className="py-7">
       <div className="flex items-start gap-4">
         <span
@@ -45,6 +76,20 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
         >
           {precedent.rank}.
         </span>
+
+        {/* Save/Bookmark button */}
+        <button
+          type="button"
+          onClick={handleSaveClick}
+          className={`mt-0.5 shrink-0 rounded-lg p-1.5 transition-colors ${
+            isSaved
+              ? "text-saffron hover:bg-saffron/10"
+              : "text-muted-foreground/40 hover:text-saffron hover:bg-saffron/10"
+          }`}
+          title={isSaved ? "Already saved" : "Save to collection"}
+        >
+          <Bookmark className={`size-5 ${isSaved ? "fill-current" : ""}`} />
+        </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -293,5 +338,15 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
         </div>
       </div>
     </article>
+
+      {showSaveModal && (
+        <SaveCaseModal
+          precedent={precedent}
+          open={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          onSaved={() => setIsSaved(true)}
+        />
+      )}
+    </>
   );
 }

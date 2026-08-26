@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Scale, Search, ShieldCheck, History, ArrowRight } from "lucide-react";
+import { Scale, Search, ShieldCheck, History, ArrowRight, BookmarkCheck } from "lucide-react";
 import { Navbar } from "@/components/legal/Navbar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 
@@ -50,7 +50,7 @@ function LandingPage() {
           </div>
         </div>
 
-        <div className="mt-24 grid w-full max-w-5xl gap-8 sm:grid-cols-3">
+        <div className="mt-24 grid w-full max-w-5xl gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               icon: <Search className="size-6 text-brand-blue" />,
@@ -66,6 +66,11 @@ function LandingPage() {
               icon: <History className="size-6 text-saffron" />,
               title: "Local & Private",
               desc: "Runs entirely locally using ONNX embeddings. No API keys required and completely offline."
+            },
+            {
+              icon: <BookmarkCheck className="size-6 text-purple-600" />,
+              title: "Lawyer Workspace",
+              desc: "Save cases into client-specific collections, annotate them with notes, and access them anytime."
             }
           ].map((feature, i) => (
             <div key={i} className="flex flex-col items-center rounded-2xl border border-border bg-surface p-8 text-center shadow-subtle hover:shadow-md transition-shadow">
