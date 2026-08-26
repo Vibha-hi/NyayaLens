@@ -17,7 +17,7 @@ export const CATEGORIES: CategoryInfo[] = [
     id: "All",
     label: "Imported Corpus",
     shortLabel: "All",
-    badgeColor: "bg-slate-100 text-slate-800 border-slate-200",
+    badgeColor: "bg-muted text-muted-foreground border-border",
     iconName: "Scale",
     description: "Search every indexed Supreme Court and High Court judgment in the local corpus.",
     sampleQuery:
@@ -52,6 +52,7 @@ export interface Precedent {
   title: string;
   court: string;
   year: string;
+  judgmentDate?: string;
   category: string;
   citation: string;
   posture: string;
