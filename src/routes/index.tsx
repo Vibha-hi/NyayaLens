@@ -300,266 +300,277 @@ function Index() {
       />
 
       <main className="flex-1">
-        <SearchPanel
-          query={query}
-          onQueryChange={setQuery}
-          onSearch={handleSearch}
-          onClear={handleClear}
-          isSearching={isSearching}
-          selectedCategory={activeCategory}
-          onSelectCategory={handleSelectCategory}
-          filters={filters}
-          onFiltersChange={handleFilterChange}
-        />
-
-        <div className="mx-auto max-w-[1380px] px-4 py-8 sm:px-6">
-          {!hasSearched ? (
-            <section
-              id="recent-cases-heading"
-              aria-labelledby="corpus-heading"
-              className="mx-auto max-w-4xl py-12 sm:py-16"
+        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <aside
+              className="lg:sticky lg:top-20 lg:h-fit lg:max-h-[calc(100vh-6rem)] lg:w-[360px] lg:shrink-0 lg:overflow-y-auto"
+              aria-label="Result filters"
             >
-              <div className="rounded-xl border border-border bg-surface p-6 shadow-subtle sm:p-8">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-brand-blue">
-                  Imported judgment corpus
-                </p>
-                <h2 id="corpus-heading" className="mt-2 font-serif text-[25px] font-bold text-navy">
-                  Imported Supreme Court and High Court judgments
-                </h2>
-                <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  The keyless local engine searches the imported judgment collection with local
-                  embeddings and exact legal-term matching. Metadata and source passages are
-                  extracted from the supplied PDFs; records marked for review should be checked
-                  against their source documents.
-                </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["Dense retrieval", "Local BGE-small passage embeddings"],
-                    ["Lexical retrieval", "SQLite FTS5 legal-term search"],
-                    ["Transparent fusion", "RRF with judgment-level grouping"],
-                  ].map(([title, detail]) => (
-                    <div key={title} className="rounded-md border border-border bg-background p-3">
-                      <p className="text-[12.5px] font-semibold text-navy">{title}</p>
-                      <p className="mt-1 text-[11.5px] text-muted-foreground">{detail}</p>
-                    </div>
-                  ))}
-                </div>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                aria-expanded={filtersOpen}
+                aria-controls="filter-panel"
+                className="mb-3 inline-flex w-full items-center justify-between rounded-md border border-border bg-surface px-3 py-2.5 text-[13px] font-medium text-navy lg:hidden"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <SlidersHorizontal className="size-4" aria-hidden="true" />
+                  Filters
+                </span>
+                <span className="text-muted-foreground">{filtersOpen ? "Hide" : "Show"}</span>
+              </button>
+              <div id="filter-panel" className={`${filtersOpen ? "block" : "hidden"} lg:block`}>
+                <FilterPanel
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onReset={resetFilters}
+                  counts={filterCounts}
+                />
               </div>
-            </section>
-          ) : (
-            <div className="pt-4">
-              <div className="mb-6 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setHasSearched(false)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-1.5 text-[13px] font-medium text-navy hover:bg-accent hover:text-brand-blue transition-colors shadow-2xs"
+            </aside>
+
+            <div className="min-w-0 flex-1">
+              <SearchPanel
+                query={query}
+                onQueryChange={setQuery}
+                onSearch={handleSearch}
+                onClear={handleClear}
+                isSearching={isSearching}
+                selectedCategory={activeCategory}
+                onSelectCategory={handleSelectCategory}
+                filters={filters}
+                onFiltersChange={handleFilterChange}
+              />
+
+              {!hasSearched ? (
+                <section
+                  id="recent-cases-heading"
+                  aria-labelledby="corpus-heading"
+                  className="mx-auto mt-8 max-w-4xl"
                 >
-                  <ArrowLeft className="size-4" />
-                  <span>Back to corpus overview</span>
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-8 lg:flex-row">
-                <aside className="lg:w-[280px] lg:shrink-0" aria-label="Result filters">
-                  <button
-                    type="button"
-                    onClick={() => setFiltersOpen((open) => !open)}
-                    aria-expanded={filtersOpen}
-                    aria-controls="filter-panel"
-                    className="mb-3 inline-flex w-full items-center justify-between rounded-md border border-border bg-surface px-3 py-2.5 text-[13px] font-medium text-navy lg:hidden"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <SlidersHorizontal className="size-4" aria-hidden="true" />
-                      Filters
-                    </span>
-                    <span className="text-muted-foreground">{filtersOpen ? "Hide" : "Show"}</span>
-                  </button>
-                  <div id="filter-panel" className={`${filtersOpen ? "block" : "hidden"} lg:block`}>
-                    <FilterPanel
-                      filters={filters}
-                      onChange={handleFilterChange}
-                      onReset={resetFilters}
-                      counts={filterCounts}
-                    />
+                  <div className="rounded-xl border border-border bg-surface p-6 shadow-subtle sm:p-8">
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-brand-blue">
+                      Imported judgment corpus
+                    </p>
+                    <h2
+                      id="corpus-heading"
+                      className="mt-2 font-serif text-[25px] font-bold text-navy"
+                    >
+                      Imported Supreme Court and High Court judgments
+                    </h2>
+                    <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                      The keyless local engine searches the imported judgment collection with local
+                      embeddings and exact legal-term matching. Metadata and source passages are
+                      extracted from the supplied PDFs; records marked for review should be checked
+                      against their source documents.
+                    </p>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      {[
+                        ["Dense retrieval", "Local BGE-small passage embeddings"],
+                        ["Lexical retrieval", "SQLite FTS5 legal-term search"],
+                        ["Transparent fusion", "RRF with judgment-level grouping"],
+                      ].map(([title, detail]) => (
+                        <div
+                          key={title}
+                          className="rounded-md border border-border bg-background p-3"
+                        >
+                          <p className="text-[12.5px] font-semibold text-navy">{title}</p>
+                          <p className="mt-1 text-[11.5px] text-muted-foreground">{detail}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </aside>
-
-                <section className="min-w-0 flex-1" aria-label="Search results">
-                  <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
-                    <strong>Local hybrid retrieval:</strong> Substantive dense retrieval and
-                    deduplicated legal-term search are fused at judgment level. A transparent legal
-                    reranker then checks controlling statutes, provisions, domain, relief, material
-                    facts and contradictions before applying authority as a tie-breaker. Each result
-                    shows its relevance basis; Precision@5 is measured separately on reviewed
-                    queries, not presented as a per-case confidence score. Outcomes must be verified
-                    against the source judgment.
+                </section>
+              ) : (
+                <div className="pt-6">
+                  <div className="mb-6 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setHasSearched(false)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-1.5 text-[13px] font-medium text-navy hover:bg-accent hover:text-brand-blue transition-colors shadow-2xs"
+                    >
+                      <ArrowLeft className="size-4" />
+                      <span>Back to corpus overview</span>
+                    </button>
                   </div>
 
-                  {searchMeta && !isSearching && (
-                    <div className="mt-3 rounded-md border border-border bg-surface px-3.5 py-3 text-[12px] text-muted-foreground">
-                      <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Corpus: {searchMeta.corpusVersion}</span>
-                        <span>Model: {searchMeta.modelVersion}</span>
-                        <span>Search time: {searchMeta.latencyMs} ms</span>
-                        <span>{searchMeta.caseCount.toLocaleString()} indexed judgments</span>
-                        <span>{searchMeta.chunkCount.toLocaleString()} searchable passages</span>
+                  <section className="min-w-0" aria-label="Search results">
+                    <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
+                      <strong>Local hybrid retrieval:</strong> Substantive dense retrieval and
+                      deduplicated legal-term search are fused at judgment level. A transparent
+                      legal reranker then checks controlling statutes, provisions, domain, relief,
+                      material facts and contradictions before applying authority as a tie-breaker.
+                      Each result shows its relevance basis; Precision@5 is measured separately on
+                      reviewed queries, not presented as a per-case confidence score. Outcomes must
+                      be verified against the source judgment.
+                    </div>
+
+                    {searchMeta && !isSearching && (
+                      <div className="mt-3 rounded-md border border-border bg-surface px-3.5 py-3 text-[12px] text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          <span>Corpus: {searchMeta.corpusVersion}</span>
+                          <span>Model: {searchMeta.modelVersion}</span>
+                          <span>Search time: {searchMeta.latencyMs} ms</span>
+                          <span>{searchMeta.caseCount.toLocaleString()} indexed judgments</span>
+                          <span>{searchMeta.chunkCount.toLocaleString()} searchable passages</span>
+                        </div>
+                        {searchMeta.extractedSignals.length > 0 && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="font-medium text-navy">Detected signals:</span>
+                            {searchMeta.extractedSignals.map((signal) => (
+                              <span
+                                key={signal}
+                                className="rounded-md border border-border bg-background px-2 py-0.5 text-navy"
+                              >
+                                {signal}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {searchMeta.extractedSignals.length > 0 && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <span className="font-medium text-navy">Detected signals:</span>
-                          {searchMeta.extractedSignals.map((signal) => (
-                            <span
-                              key={signal}
-                              className="rounded-md border border-border bg-background px-2 py-0.5 text-navy"
+                    )}
+
+                    <div className="mt-6 flex flex-col gap-4 border-b border-border pb-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-[15px] font-bold text-navy">
+                            {filteredResults.length} precedent
+                            {filteredResults.length === 1 ? "" : "s"}
+                          </h2>
+                          {results.length > 0 && (
+                            <span className="text-[13px] text-muted-foreground">
+                              of {results.length} retrieved
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                            <input
+                              type="text"
+                              placeholder="Search within results..."
+                              value={resultsQuery}
+                              onChange={(e) => setResultsQuery(e.target.value)}
+                              className="w-48 rounded-md border border-border bg-background pl-8 pr-2.5 py-1.5 text-[12.5px] text-foreground focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                            />
+                          </div>
+                          <select
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[12.5px] text-foreground focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          >
+                            <option value="relevance">Relevance</option>
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="court">Court hierarchy</option>
+                          </select>
+                          <div className="flex items-center rounded-md border border-border bg-background p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsCompact(true)}
+                              className={`rounded-sm p-1 ${isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
+                              title="Compact view"
                             >
-                              {signal}
+                              <AlignJustify className="size-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsCompact(false)}
+                              className={`rounded-sm p-1 ${!isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
+                              title="Detailed view"
+                            >
+                              <LayoutList className="size-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {filterChips.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide mr-1">
+                            Active filters:
+                          </span>
+                          {filterChips.map((chip, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-full border border-brand-blue/20 bg-brand-blue/5 px-2 py-0.5 text-[12px] text-brand-blue"
+                            >
+                              {chip.label}: {chip.value}
+                              <button
+                                type="button"
+                                onClick={() => removeFilterChip(chip)}
+                                className="ml-0.5 rounded-full p-0.5 hover:bg-brand-blue/20"
+                              >
+                                <X className="size-3" />
+                              </button>
                             </span>
                           ))}
+                          <button
+                            type="button"
+                            onClick={resetFilters}
+                            className="ml-1 text-[12px] font-medium text-muted-foreground hover:text-navy hover:underline"
+                          >
+                            Clear all
+                          </button>
                         </div>
                       )}
                     </div>
-                  )}
 
-                  <div className="mt-6 flex flex-col gap-4 border-b border-border pb-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-[15px] font-bold text-navy">
-                          {filteredResults.length} precedent
-                          {filteredResults.length === 1 ? "" : "s"}
-                        </h2>
-                        {results.length > 0 && (
-                          <span className="text-[13px] text-muted-foreground">
-                            of {results.length} retrieved
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                          <input
-                            type="text"
-                            placeholder="Search within results..."
-                            value={resultsQuery}
-                            onChange={(e) => setResultsQuery(e.target.value)}
-                            className="w-48 rounded-md border border-border bg-background pl-8 pr-2.5 py-1.5 text-[12.5px] text-foreground focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                          />
-                        </div>
-                        <select
-                          value={sortOrder}
-                          onChange={(e) => setSortOrder(e.target.value)}
-                          className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[12.5px] text-foreground focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                    {isSearching ? (
+                      <ResultSkeleton />
+                    ) : searchError ? (
+                      <div className="py-12 text-center rounded-xl border border-dashed border-red-300 bg-red-50/50 mt-6">
+                        <p className="text-[15px] font-medium text-red-700">Search failed</p>
+                        <p className="mt-2 text-[13px] text-red-600/80 max-w-md mx-auto">
+                          {searchError}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => executeSearch(query, filters)}
+                          className="mt-4 rounded-md bg-navy px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-navy/90"
                         >
-                          <option value="relevance">Relevance</option>
-                          <option value="newest">Newest first</option>
-                          <option value="oldest">Oldest first</option>
-                          <option value="court">Court hierarchy</option>
-                        </select>
-                        <div className="flex items-center rounded-md border border-border bg-background p-0.5">
-                          <button
-                            type="button"
-                            onClick={() => setIsCompact(true)}
-                            className={`rounded-sm p-1 ${isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
-                            title="Compact view"
-                          >
-                            <AlignJustify className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsCompact(false)}
-                            className={`rounded-sm p-1 ${!isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
-                            title="Detailed view"
-                          >
-                            <LayoutList className="size-3.5" />
-                          </button>
-                        </div>
+                          Try again
+                        </button>
                       </div>
-                    </div>
-
-                    {filterChips.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide mr-1">
-                          Active filters:
-                        </span>
-                        {filterChips.map((chip, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 rounded-full border border-brand-blue/20 bg-brand-blue/5 px-2 py-0.5 text-[12px] text-brand-blue"
-                          >
-                            {chip.label}: {chip.value}
-                            <button
-                              type="button"
-                              onClick={() => removeFilterChip(chip)}
-                              className="ml-0.5 rounded-full p-0.5 hover:bg-brand-blue/20"
-                            >
-                              <X className="size-3" />
-                            </button>
-                          </span>
-                        ))}
+                    ) : filteredResults.length === 0 ? (
+                      <div className="py-16 text-center rounded-xl border border-dashed border-border bg-surface mt-6">
+                        <p className="text-[15px] font-medium text-muted-foreground">
+                          No indexed precedents match this query and the selected filters.
+                        </p>
                         <button
                           type="button"
                           onClick={resetFilters}
-                          className="ml-1 text-[12px] font-medium text-muted-foreground hover:text-navy hover:underline"
+                          className="mt-4 rounded-md bg-navy px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-navy/90"
                         >
-                          Clear all
+                          Reset all filters
                         </button>
                       </div>
+                    ) : (
+                      <div className="divide-y divide-border mt-4">
+                        {filteredResults.map((precedent) => (
+                          <PrecedentItem
+                            key={precedent.id}
+                            precedent={precedent}
+                            expanded={expandedId === precedent.id}
+                            onToggle={() =>
+                              setExpandedId((current) =>
+                                current === precedent.id ? null : precedent.id,
+                              )
+                            }
+                            searchQuery={query}
+                            sectionQuery={filters.sectionQuery}
+                            activeIssues={filters.issues}
+                            isCompact={isCompact}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </div>
-
-                  {isSearching ? (
-                    <ResultSkeleton />
-                  ) : searchError ? (
-                    <div className="py-12 text-center rounded-xl border border-dashed border-red-300 bg-red-50/50 mt-6">
-                      <p className="text-[15px] font-medium text-red-700">Search failed</p>
-                      <p className="mt-2 text-[13px] text-red-600/80 max-w-md mx-auto">
-                        {searchError}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => executeSearch(query, filters)}
-                        className="mt-4 rounded-md bg-navy px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-navy/90"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  ) : filteredResults.length === 0 ? (
-                    <div className="py-16 text-center rounded-xl border border-dashed border-border bg-surface mt-6">
-                      <p className="text-[15px] font-medium text-muted-foreground">
-                        No indexed precedents match this query and the selected filters.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="mt-4 rounded-md bg-navy px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-navy/90"
-                      >
-                        Reset all filters
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border mt-4">
-                      {filteredResults.map((precedent) => (
-                        <PrecedentItem
-                          key={precedent.id}
-                          precedent={precedent}
-                          expanded={expandedId === precedent.id}
-                          onToggle={() =>
-                            setExpandedId((current) =>
-                              current === precedent.id ? null : precedent.id,
-                            )
-                          }
-                          searchQuery={query}
-                          sectionQuery={filters.sectionQuery}
-                          activeIssues={filters.issues}
-                          isCompact={isCompact}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
+                  </section>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
 

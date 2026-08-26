@@ -411,8 +411,17 @@ export function FilterPanel({ filters, onChange, onReset, counts }: FilterPanelP
   };
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4 shadow-subtle lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-      <h2 className="font-serif text-[16px] font-semibold text-navy">Refine Results</h2>
+    <div className="rounded-md border border-border bg-surface p-4 shadow-subtle">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-serif text-[16px] font-semibold text-navy">Refine Results</h2>
+        <button
+          type="button"
+          onClick={onReset}
+          className="rounded-md border border-border px-2.5 py-1 text-[12px] text-navy hover:bg-accent"
+        >
+          Reset filters
+        </button>
+      </div>
 
       <CourtFilter
         selected={filters.courts}
@@ -444,14 +453,6 @@ export function FilterPanel({ filters, onChange, onReset, counts }: FilterPanelP
         counts={counts.issues}
         onToggle={(issue) => toggleArrayOption("issues", issue)}
       />
-
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-6 w-full rounded-md border border-border px-2.5 py-1.5 text-[12px] text-navy hover:bg-accent"
-      >
-        Reset filters
-      </button>
     </div>
   );
 }
