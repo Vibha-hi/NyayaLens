@@ -1,4 +1,13 @@
-import { ChevronDown, ExternalLink, CheckCircle2, XCircle, Clock, HelpCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  HelpCircle,
+  PieChart,
+  CornerUpLeft,
+} from "lucide-react";
 import type { Precedent } from "@/data/precedents";
 
 function HighlightedEvidence({
@@ -147,6 +156,122 @@ function shortenBadgeValue(value: string): string {
   return value;
 }
 
+type WinnerTone = "green" | "red" | "blue" | "purple" | "amber";
+
+function getWinnerTone(value: string): WinnerTone {
+  const lower = value.toLowerCase();
+
+  // RED MUST BE CHECKED BEFORE GREEN
+  if (
+    lower.includes("respondent succeeded") ||
+    lower.includes("respondent/state side succeeded") ||
+    lower.includes("state won") ||
+    lower.includes("state succeeded") ||
+    lower.includes("dismissed") ||
+    lower.includes("appeal dismissed") ||
+    lower.includes("petition dismissed") ||
+    lower.includes("bail rejected") ||
+    lower.includes("bail declined") ||
+    lower.includes("application rejected") ||
+    lower.includes("conviction upheld") ||
+    lower.includes("conviction affirmed") ||
+    lower.includes("slp dismissed")
+  ) {
+    return "red";
+  }
+
+  // PURPLE MUST BE CHECKED BEFORE GREEN
+  if (
+    lower.includes("remanded") ||
+    lower.includes("remitted") ||
+    lower.includes("matter remanded") ||
+    lower.includes("remanded/no final winner") ||
+    lower.includes("no final winner") ||
+    lower.includes("sent back") ||
+    lower.includes("withdrawn") ||
+    lower.includes("permitted to be withdrawn") ||
+    lower.includes("disposed as infructuous") ||
+    lower.includes("infructuous") ||
+    lower.includes("rendered academic") ||
+    lower.includes("transferred")
+  ) {
+    return "purple";
+  }
+
+  // GREEN
+  if (
+    lower.includes("appellant succeeded") ||
+    lower.includes("appellant/petitioner succeeded") ||
+    lower.includes("petitioner succeeded") ||
+    lower.includes("petitioner won") ||
+    lower.includes("applicant won") ||
+    lower.includes("accused/applicant succeeded") ||
+    lower.includes("accused succeeded") ||
+    lower.includes("bail granted") ||
+    lower.includes("relief granted") ||
+    lower.includes("appeal allowed") ||
+    lower.includes("petition allowed") ||
+    lower.includes("impugned decision set aside") ||
+    lower.includes("conviction set aside") ||
+    lower.includes("proceedings quashed") ||
+    lower.includes("acquitted")
+  ) {
+    return "green";
+  }
+
+  // BLUE
+  if (
+    lower.includes("partly allowed") ||
+    lower.includes("partially allowed") ||
+    lower.includes("partial relief") ||
+    lower.includes("partial/mixed relief") ||
+    lower.includes("mixed relief") ||
+    lower.includes("relief partly granted")
+  ) {
+    return "blue";
+  }
+
+  return "amber";
+}
+
+function shortenWinnerValue(value: string): string {
+  if (value.includes("Appellant / petitioner su")) return "Appellant won";
+  if (value.includes("Accused / applicant su")) return "Applicant won";
+  if (value.includes("Respondent / State side su")) return "State won";
+  if (value.includes("Remanded / no final winner")) return "Remanded";
+  if (value.includes("Partial / mixed relief")) return "Partly allowed";
+  if (value.includes("Not stated - verify judg")) return "Unverified";
+  return value;
+}
+
+function WinnerBadge({ value }: { value: string }) {
+  const tone = getWinnerTone(value);
+  const shortened = shortenWinnerValue(value);
+
+  let Icon = HelpCircle;
+  if (tone === "green") Icon = CheckCircle2;
+  else if (tone === "red") Icon = XCircle;
+  else if (tone === "blue") Icon = PieChart;
+  else if (tone === "purple") Icon = CornerUpLeft;
+
+  const bgVar = `var(--winner-${tone}-bg)`;
+  const fgVar = `var(--winner-${tone}-fg)`;
+
+  return (
+    <div
+      className="inline-flex items-center gap-1.5 whitespace-nowrap px-[10px] py-[4px] rounded-[6px]"
+      style={{ backgroundColor: bgVar, color: fgVar }}
+      title={value}
+    >
+      <Icon className="size-[13px] shrink-0" aria-hidden="true" />
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] uppercase tracking-[0.04em] opacity-75">WINNER</span>
+        <span className="text-[12.5px] font-semibold leading-none pt-px">{shortened}</span>
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({
   label,
   value,
@@ -232,7 +357,7 @@ export function PrecedentItem({
           <div className="flex flex-col gap-4 min-[900px]:flex-row min-[900px]:items-start min-[900px]:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h3 className="text-[17px] leading-snug font-semibold text-navy">
+                <h3 className="text-[19px] leading-snug font-semibold text-navy">
                   <span className="sr-only">Result {precedent.rank}: </span>
                   {precedent.title}
                 </h3>
@@ -262,11 +387,10 @@ export function PrecedentItem({
             </div>
 
             <div
-              className="mt-3 min-[900px]:mt-0 flex flex-wrap gap-[6px] min-[900px]:justify-end shrink-0"
+              className="mt-3 min-[900px]:mt-0 flex flex-wrap gap-[6px] min-[900px]:justify-end shrink-0 items-center"
               aria-label="Status badges"
             >
-              <StatusBadge label="Winner" value={precedent.winner} isPrimary />
-              <StatusBadge label="Matter" value={precedent.matterStatus} />
+              <WinnerBadge value={precedent.winner} />
               <StatusBadge label="Trial" value={precedent.trialStatus} />
               <StatusBadge label="Stage" value={precedent.caseStage} />
             </div>

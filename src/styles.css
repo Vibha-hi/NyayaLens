@@ -140,6 +140,17 @@
   --badge-neutral-text: #5A594F;
   --badge-unknown-bg: #FAEEDA;
   --badge-unknown-text: #7A5410;
+
+  --winner-green-bg: #E8F3DC;
+  --winner-green-fg: #2E5214;
+  --winner-red-bg: #FCEBEB;
+  --winner-red-fg: #8C1D1D;
+  --winner-blue-bg: #E6F1FB;
+  --winner-blue-fg: #1B4B7A;
+  --winner-purple-bg: #F1E8F7;
+  --winner-purple-fg: #4A2160;
+  --winner-amber-bg: #FAEEDA;
+  --winner-amber-fg: #7A5410;
 }
 
 .dark {
@@ -194,6 +205,17 @@
   --badge-neutral-text: #B4B2A9;
   --badge-unknown-bg: #412402;
   --badge-unknown-text: #FAC775;
+
+  --winner-green-bg: #173404;
+  --winner-green-fg: #C0DD97;
+  --winner-red-bg: #501313;
+  --winner-red-fg: #F09595;
+  --winner-blue-bg: #042C53;
+  --winner-blue-fg: #85B7EB;
+  --winner-purple-bg: #341046;
+  --winner-purple-fg: #C79BE0;
+  --winner-amber-bg: #412402;
+  --winner-amber-fg: #FAC775;
 }
 
 @layer base {
