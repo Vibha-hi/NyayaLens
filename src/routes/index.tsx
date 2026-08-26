@@ -125,6 +125,7 @@ function Index() {
         error instanceof Error ? error.message : "An unexpected error occurred while searching.";
       setSearchError(message);
       setResults([]);
+      setSearchMeta(null);
     } finally {
       if (requestId === latestRequestId.current) setIsSearching(false);
     }
@@ -201,7 +202,7 @@ function Index() {
           selectedCategory={activeCategory}
           onSelectCategory={handleSelectCategory}
           filters={filters}
-          onFiltersChange={setFilters}
+          onFiltersChange={handleFilterChange}
         />
 
         <div className="mx-auto max-w-[1380px] px-4 py-8 sm:px-6">
@@ -277,12 +278,13 @@ function Index() {
 
                 <section className="min-w-0 flex-1" aria-label="Search results">
                   <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
-                    <strong>Local hybrid retrieval:</strong> Dense passage similarity and exact
-                    legal-term search are fused with Reciprocal Rank Fusion. A small authority
-                    adjustment then considers court hierarchy, bench strength, recency, shared
-                    issues and statutory provisions. Each result shows its relevance basis; Precision@5 is
-                    measured separately on legally reviewed queries, not presented as a per-case
-                    confidence score. Outcomes must be verified against the source judgment.
+                    <strong>Local hybrid retrieval:</strong> Substantive dense retrieval and
+                    deduplicated legal-term search are fused at judgment level. A transparent legal
+                    reranker then checks controlling statutes, provisions, domain, relief, material
+                    facts and contradictions before applying authority as a tie-breaker. Each result
+                    shows its relevance basis; Precision@5 is measured separately on reviewed
+                    queries, not presented as a per-case confidence score. Outcomes must be verified
+                    against the source judgment.
                   </div>
 
                   {searchMeta && !isSearching && (
@@ -316,11 +318,11 @@ function Index() {
                         {results.length} Matching Precedent{results.length === 1 ? "" : "s"}
                       </h2>
                       <p className="mt-1 text-[13px] text-muted-foreground">
-                        Ranked by dense retrieval, lexical retrieval and transparent RRF fusion
+                        Ranked by case-level hybrid retrieval and transparent legal-intent reranking
                       </p>
                     </div>
                     <span className="rounded-full border border-brand-blue/40 bg-brand-blue/10 px-3 py-1 text-[12px] font-semibold text-brand-blue">
-                      Hybrid RRF ranking
+                      Legal-aware hybrid ranking
                     </span>
                   </div>
 

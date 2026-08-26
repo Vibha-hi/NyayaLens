@@ -54,6 +54,7 @@ export function SearchPanel({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isEmpty = query.trim().length === 0;
   const wordCount = query.trim().length === 0 ? 0 : query.trim().split(/\s+/).length;
+  const queryTooShort = !isEmpty && (query.trim().length < 20 || wordCount < 4);
   const activeAdvancedCount = [
     filters.court !== "All Courts",
     filters.year !== "All Years",
@@ -96,7 +97,7 @@ export function SearchPanel({
           className="mt-8 max-w-4xl rounded-2xl border-2 border-border bg-surface p-5 sm:p-7 shadow-lg transition-all focus-within:border-brand-blue focus-within:ring-4 focus-within:ring-brand-blue/15"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!isEmpty) {
+            if (!isEmpty && !queryTooShort) {
               setAdvancedOpen(false);
               onSearch();
             }
@@ -120,7 +121,6 @@ export function SearchPanel({
               Reset to Original Case Facts
             </button>
           </div>
-
           {/* Large Text Area */}
           <div className="relative">
             <textarea
@@ -138,6 +138,11 @@ export function SearchPanel({
               </div>
             )}
           </div>
+          {queryTooShort && (
+            <p className="mt-2 text-[11.5px] font-medium text-amber-800" role="alert">
+              Describe the matter using at least four meaningful words and 20 characters.
+            </p>
+          )}
 
           {/* Quick Presets by Category */}
           <div className="mt-4 pt-3 border-t border-border/60">
@@ -181,7 +186,7 @@ export function SearchPanel({
             <div className="flex items-center gap-3">
               <button
                 type="submit"
-                disabled={isEmpty || isSearching}
+                disabled={isEmpty || queryTooShort || isSearching}
                 className="inline-flex items-center gap-2.5 rounded-xl bg-navy px-6 py-3 text-[14.5px] font-semibold text-primary-foreground shadow-md transition-all hover:bg-navy/90 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
               >
                 {isSearching ? (
@@ -229,7 +234,9 @@ export function SearchPanel({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[13px] font-semibold text-navy">Pre-select search scope</p>
+                        <p className="text-[13px] font-semibold text-navy">
+                          Pre-select search scope
+                        </p>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
                           These conditions are enforced by the retrieval engine.
                         </p>

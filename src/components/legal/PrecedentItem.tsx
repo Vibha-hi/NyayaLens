@@ -7,7 +7,7 @@ function HighlightedEvidence({ text, phrases }: { text: string; phrases: string[
   const parts = pattern ? text.split(pattern) : [text];
 
   return (
-    <p className="text-[13.5px] leading-relaxed text-foreground">
+    <p className="line-clamp-6 text-[13.5px] leading-relaxed text-foreground">
       {parts.map((part, index) =>
         pattern && phrases.some((phrase) => phrase.toLowerCase() === part.toLowerCase()) ? (
           <mark key={index} className="bg-brand-blue/12 px-0.5 font-medium text-navy">
@@ -30,8 +30,11 @@ interface PrecedentItemProps {
 export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemProps) {
   const panelId = `why-${precedent.id}`;
   const uncertainStage = precedent.caseStageConfidence === "Low";
+  const uncertainTrial = precedent.trialStatus.toLowerCase().includes("verify");
   const uncertainMatter = precedent.matterStatus.toLowerCase().includes("verify");
-  const uncertainOutcome = precedent.outcomeRelief.toLowerCase().includes("verify");
+  const uncertainWinner =
+    precedent.winner.toLowerCase().includes("verify") ||
+    precedent.outcomeRelief.toLowerCase().includes("verify");
 
   return (
     <article className="py-7">
@@ -76,7 +79,10 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
               </dl>
             </div>
 
-            <div className="grid shrink-0 gap-2 sm:grid-cols-3" aria-label="Case stage, status and outcome">
+            <div
+              className="grid shrink-0 gap-2 sm:grid-cols-2 xl:w-[31rem]"
+              aria-label="Case stage, trial status, matter status and winner"
+            >
               <div
                 className={`min-w-40 rounded-md border px-3 py-2 ${
                   uncertainStage
@@ -85,9 +91,23 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
                 }`}
               >
                 <p className="text-[9.5px] font-bold tracking-wider uppercase">Case stage</p>
-                <p className="mt-0.5 text-[12px] font-semibold leading-tight">{precedent.caseStage}</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">
+                  {precedent.caseStage}
+                </p>
                 <p className="mt-1 text-[10px] opacity-75">
                   {precedent.caseStageConfidence} confidence
+                </p>
+              </div>
+              <div
+                className={`min-w-40 rounded-md border px-3 py-2 ${
+                  uncertainTrial
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-violet-200 bg-violet-50 text-violet-900"
+                }`}
+              >
+                <p className="text-[9.5px] font-bold tracking-wider uppercase">Trial status</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">
+                  {precedent.trialStatus}
                 </p>
               </div>
               <div
@@ -98,19 +118,24 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
                 }`}
               >
                 <p className="text-[9.5px] font-bold tracking-wider uppercase">Matter status</p>
-                <p className="mt-0.5 text-[12px] font-semibold leading-tight">{precedent.matterStatus}</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">
+                  {precedent.matterStatus}
+                </p>
               </div>
               <div
-                className={`min-w-48 max-w-60 rounded-md border px-3 py-2 ${
-                  uncertainOutcome
+                className={`min-w-40 rounded-md border px-3 py-2 ${
+                  uncertainWinner
                     ? "border-amber-300 bg-amber-50 text-amber-900"
                     : "border-emerald-200 bg-emerald-50 text-emerald-900"
                 }`}
               >
-                <p className="text-[9.5px] font-bold tracking-wider uppercase">Outcome / relief</p>
-                <p className="mt-0.5 text-[12px] font-semibold leading-tight">
-                  {precedent.outcomeRelief}
-                </p>
+                <p className="text-[9.5px] font-bold tracking-wider uppercase">Winner / outcome</p>
+                <p className="mt-0.5 text-[12px] font-semibold leading-tight">{precedent.winner}</p>
+                {precedent.outcomeRelief !== precedent.winner && (
+                  <p className="mt-1 text-[10px] leading-tight opacity-80">
+                    {precedent.outcomeRelief}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -140,7 +165,7 @@ export function PrecedentItem({ precedent, expanded, onToggle }: PrecedentItemPr
             />
             {precedent.evidenceLocator && (
               <p className="mt-2 text-[11.5px] text-muted-foreground">
-                Extractive summary from: {precedent.evidenceLocator.section} ·{" "}
+                Primary matched passage: {precedent.evidenceLocator.section} ·{" "}
                 {precedent.evidenceLocator.paragraph}
               </p>
             )}

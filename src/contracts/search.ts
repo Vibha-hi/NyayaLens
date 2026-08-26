@@ -26,6 +26,9 @@ export const searchFiltersSchema = z.object({
     "Taxation",
     "Arbitration",
     "Property / Land",
+    "Succession / Inheritance",
+    "Probate / Wills",
+    "Tenancy / Rent Control",
     "Family / Matrimonial",
     "Motor Vehicles / Compensation",
     "Consumer Law",
@@ -41,7 +44,14 @@ export const searchFiltersSchema = z.object({
 });
 
 export const searchRequestSchema = z.object({
-  query: z.string().trim().min(20).max(4000),
+  query: z
+    .string()
+    .trim()
+    .min(20, "Describe the matter using at least 20 characters.")
+    .max(4000)
+    .refine((value) => value.split(/\s+/).length >= 4, {
+      message: "Describe the matter using at least four meaningful words.",
+    }),
   filters: searchFiltersSchema,
   topK: z.number().int().min(1).max(20).default(10),
 });
@@ -87,7 +97,9 @@ const precedentSchema = z
     reasonCodes: z.array(z.string()),
     denseRank: z.number().int().positive().nullable().optional(),
     lexicalRank: z.number().int().positive().nullable().optional(),
-    retrievalScore: z.number().nonnegative(),
+    // Transparent reranking penalties can make this signed score negative; it
+    // is an ordering trace, not a confidence or probability value.
+    retrievalScore: z.number(),
   })
   .transform((value) => value as Precedent);
 
