@@ -343,8 +343,8 @@ def extract_sections(text: str) -> tuple[str, ...]:
         lowered,
     )
     articles = re.findall(r"\barticles?\s*[-:]?\s*(\d+[a-z]?(?:\s*\([a-z0-9]+\))*)", lowered)
-    normalized = [f"Section {re.sub(r'\s+', '', item).upper()}" for item in provisions]
-    normalized.extend(f"Article {re.sub(r'\s+', '', item).upper()}" for item in articles)
+    normalized = ["Section " + re.sub(r'\s+', '', item).upper() for item in provisions]
+    normalized.extend("Article " + re.sub(r'\s+', '', item).upper() for item in articles)
     return tuple(dict.fromkeys(normalized))
 
 
