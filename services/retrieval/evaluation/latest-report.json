@@ -1,0 +1,1446 @@
+{
+  "generatedAtUtc": "2026-08-27T08:19:07.314327+00:00",
+  "gitRevision": "7c641f34a7dbcbcce36a2dc726cb815c30444fc6",
+  "corpusVersion": "import-2026-08-26-4609-cases",
+  "modelVersion": "BAAI/bge-small-en-v1.5",
+  "indexVersion": {
+    "schema": "4",
+    "vectorSelector": "facts-decision-v3",
+    "lexicalSelector": "source-passages-v2",
+    "rrfK": 60
+  },
+  "evaluationSet": "import_regression_queries.json",
+  "systems": {
+    "dense": "Two-vector case-level dense branch",
+    "lexical": "Role-aware case-level SQLite FTS5 branch",
+    "hybridRrf": "Plain case-level reciprocal-rank fusion of dense and lexical branches",
+    "hybridReranked": "Production hybrid with legal-context, contradiction and authority analysis; automatic rank adjustment is evaluation-gated"
+  },
+  "labelSummary": {
+    "queries": 6,
+    "explicitJudgments": 14,
+    "knownRelevantJudgments": 12,
+    "explicitNegativeJudgments": 2,
+    "queriesWithExplicitNegatives": 2,
+    "gradedPreferencePairs": 10,
+    "queriesWithContradictionReview": 0
+  },
+  "metrics": {
+    "dense": {
+      "judgedPrecision@5": 1.0,
+      "judgedCoverage@5": 0.1,
+      "knownRelevantMrr@10": 0.4352,
+      "knownRelevantRecall@10": 0.4167,
+      "condensedNdcg@10": 0.8276,
+      "pairwisePreferenceAccuracy@10": 1.0,
+      "pairwisePreferenceCoverage@10": 0.1667,
+      "explicitContradictionRateAmongJudged@5": null,
+      "explicitContradictionQueryHit@5": null,
+      "sourceLinkCoverage@10": 1.0,
+      "evidenceLocatorCoverage@10": 1.0,
+      "metricObservations": {
+        "judgedPrecision@5": 3,
+        "judgedCoverage@5": 6,
+        "knownRelevantMrr@10": 6,
+        "knownRelevantRecall@10": 6,
+        "condensedNdcg@10": 6,
+        "pairwisePreferenceAccuracy@10": 1,
+        "pairwisePreferenceCoverage@10": 6,
+        "explicitContradictionRateAmongJudged@5": 0,
+        "explicitContradictionQueryHit@5": 0,
+        "sourceLinkCoverage@10": 6,
+        "evidenceLocatorCoverage@10": 6
+      },
+      "latencyMs": {
+        "p50": 65.949,
+        "p95": 73.672,
+        "observations": 6
+      }
+    },
+    "lexical": {
+      "judgedPrecision@5": 0.875,
+      "judgedCoverage@5": 0.2,
+      "knownRelevantMrr@10": 0.5602,
+      "knownRelevantRecall@10": 0.5,
+      "condensedNdcg@10": 0.8821,
+      "pairwisePreferenceAccuracy@10": 0.5,
+      "pairwisePreferenceCoverage@10": 0.2222,
+      "explicitContradictionRateAmongJudged@5": null,
+      "explicitContradictionQueryHit@5": null,
+      "sourceLinkCoverage@10": 1.0,
+      "evidenceLocatorCoverage@10": 1.0,
+      "metricObservations": {
+        "judgedPrecision@5": 4,
+        "judgedCoverage@5": 6,
+        "knownRelevantMrr@10": 6,
+        "knownRelevantRecall@10": 6,
+        "condensedNdcg@10": 6,
+        "pairwisePreferenceAccuracy@10": 2,
+        "pairwisePreferenceCoverage@10": 6,
+        "explicitContradictionRateAmongJudged@5": 0,
+        "explicitContradictionQueryHit@5": 0,
+        "sourceLinkCoverage@10": 6,
+        "evidenceLocatorCoverage@10": 6
+      },
+      "latencyMs": {
+        "p50": 283.488,
+        "p95": 396.456,
+        "observations": 6
+      }
+    },
+    "hybridRrf": {
+      "judgedPrecision@5": 1.0,
+      "judgedCoverage@5": 0.1667,
+      "knownRelevantMrr@10": 0.4931,
+      "knownRelevantRecall@10": 0.5833,
+      "condensedNdcg@10": 0.9379,
+      "pairwisePreferenceAccuracy@10": 1.0,
+      "pairwisePreferenceCoverage@10": 0.2222,
+      "explicitContradictionRateAmongJudged@5": null,
+      "explicitContradictionQueryHit@5": null,
+      "sourceLinkCoverage@10": 1.0,
+      "evidenceLocatorCoverage@10": 1.0,
+      "metricObservations": {
+        "judgedPrecision@5": 4,
+        "judgedCoverage@5": 6,
+        "knownRelevantMrr@10": 6,
+        "knownRelevantRecall@10": 6,
+        "condensedNdcg@10": 6,
+        "pairwisePreferenceAccuracy@10": 2,
+        "pairwisePreferenceCoverage@10": 6,
+        "explicitContradictionRateAmongJudged@5": 0,
+        "explicitContradictionQueryHit@5": 0,
+        "sourceLinkCoverage@10": 6,
+        "evidenceLocatorCoverage@10": 6
+      },
+      "latencyMs": {
+        "p50": 342.106,
+        "p95": 488.199,
+        "observations": 6
+      }
+    },
+    "hybridReranked": {
+      "judgedPrecision@5": 1.0,
+      "judgedCoverage@5": 0.1667,
+      "knownRelevantMrr@10": 0.4931,
+      "knownRelevantRecall@10": 0.5833,
+      "condensedNdcg@10": 0.7703,
+      "pairwisePreferenceAccuracy@10": 1.0,
+      "pairwisePreferenceCoverage@10": 0.2222,
+      "explicitContradictionRateAmongJudged@5": null,
+      "explicitContradictionQueryHit@5": null,
+      "sourceLinkCoverage@10": 1.0,
+      "evidenceLocatorCoverage@10": 1.0,
+      "metricObservations": {
+        "judgedPrecision@5": 4,
+        "judgedCoverage@5": 6,
+        "knownRelevantMrr@10": 6,
+        "knownRelevantRecall@10": 6,
+        "condensedNdcg@10": 6,
+        "pairwisePreferenceAccuracy@10": 2,
+        "pairwisePreferenceCoverage@10": 6,
+        "explicitContradictionRateAmongJudged@5": 0,
+        "explicitContradictionQueryHit@5": 0,
+        "sourceLinkCoverage@10": 6,
+        "evidenceLocatorCoverage@10": 6
+      },
+      "latencyMs": {
+        "p50": 1445.29,
+        "p95": 1580.128,
+        "observations": 6
+      }
+    }
+  },
+  "topResultDiagnostics": {
+    "dense": [
+      {
+        "id": "default-bail-charge-sheet-deadline",
+        "top10": [
+          "sc-ik-199112586",
+          "sc-ik-120451656",
+          "sc-ik-10807134",
+          "sc-ik-132771982",
+          "sc-ik-194334432",
+          "sc-ik-94971837",
+          "sc-ik-80283704",
+          "sc-ik-145835931",
+          "sc-ik-24360272",
+          "sc-ik-111592349"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-199112586",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-120451656",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-10807134",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-132771982",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-194334432",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 68.538,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 0.5,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 1.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "arbitral-award-patent-illegality",
+        "top10": [
+          "sc-ik-79928496",
+          "sc-ik-90338172",
+          "sc-ik-147916054",
+          "sc-ik-197941333",
+          "sc-ik-120709208",
+          "sc-ik-59053192",
+          "sc-ik-190530250",
+          "sc-ik-91466985",
+          "sc-ik-32409083",
+          "sc-ik-120343307"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-79928496",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-90338172",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-147916054",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-197941333",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-120709208",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 63.359,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.0,
+          "knownRelevantRecall@10": 0.0,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "income-tax-assessment-deduction",
+        "top10": [
+          "sc-ik-113971533",
+          "sc-ik-140413099",
+          "sc-ik-49006086",
+          "sc-ik-43859527",
+          "sc-ik-7343478",
+          "sc-ik-12036342",
+          "sc-ik-181172803",
+          "sc-ik-88815806",
+          "sc-ik-7477432",
+          "sc-ik-153340831"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-113971533",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-140413099",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-49006086",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-43859527",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-7343478",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 58.271,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.0,
+          "knownRelevantRecall@10": 0.0,
+          "condensedNdcg@10": 0.1310456303875653,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "ndps-bail-prolonged-custody",
+        "top10": [
+          "hc-phhc011365222025",
+          "hc-gahc010086212025",
+          "hc-cghc010106762026",
+          "hc-hcma010040102025",
+          "sc-ik-156645137",
+          "sc-ik-14876924",
+          "sc-ik-16657776",
+          "sc-ik-21357234",
+          "sc-ik-68944118",
+          "sc-ik-57169485"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "hc-phhc011365222025",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "hc-gahc010086212025",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "hc-cghc010106762026",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "hc-hcma010040102025",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-156645137",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 59.876,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "hindu-intestate-siblings-equal-shares",
+        "top10": [
+          "sc-ik-21722097",
+          "sc-ik-30241407",
+          "sc-ik-140148242",
+          "sc-ik-128638041",
+          "sc-ik-35586554",
+          "sc-ik-34963020",
+          "sc-ik-88759498",
+          "sc-ik-4472721",
+          "sc-ik-143363828",
+          "sc-ik-56175783"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-21722097",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-30241407",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-140148242",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-128638041",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-35586554",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 74.162,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "tenant-heirs-rent-control-protection",
+        "top10": [
+          "sc-ik-43314127",
+          "sc-ik-178752785",
+          "sc-ik-15053243",
+          "sc-ik-158079666",
+          "sc-ik-108374381",
+          "sc-ik-154471238",
+          "sc-ik-194853219",
+          "sc-ik-180629618",
+          "sc-ik-115795579",
+          "sc-ik-194067859"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-43314127",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-178752785",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-15053243",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-158079666",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-108374381",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 72.205,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.1111111111111111,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      }
+    ],
+    "lexical": [
+      {
+        "id": "default-bail-charge-sheet-deadline",
+        "top10": [
+          "sc-ik-194334432",
+          "sc-ik-199112586",
+          "sc-ik-88760594",
+          "sc-ik-94971837",
+          "sc-ik-120451656",
+          "sc-ik-10807134",
+          "sc-ik-80283704",
+          "sc-ik-86306702",
+          "sc-ik-33298935",
+          "sc-ik-154033650"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-194334432",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-199112586",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-88760594",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-94971837",
+            "label": "relevant:1"
+          },
+          {
+            "caseId": "sc-ik-120451656",
+            "label": "relevant:3"
+          }
+        ],
+        "judgedResults@5": 2,
+        "unjudgedResults@5": 3,
+        "latencyMs": 288.159,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.4,
+          "knownRelevantMrr@10": 0.25,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 0.7098097413968655,
+          "pairwisePreferenceAccuracy@10": 0.0,
+          "pairwisePreferenceCoverage@10": 1.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "arbitral-award-patent-illegality",
+        "top10": [
+          "sc-ik-59053192",
+          "sc-ik-8937648",
+          "sc-ik-55582286",
+          "sc-ik-52650140",
+          "sc-ik-121987320",
+          "sc-ik-88353968",
+          "sc-ik-151806542",
+          "sc-ik-155215460",
+          "sc-ik-173948479",
+          "sc-ik-95803467"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-59053192",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-8937648",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-55582286",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-52650140",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-121987320",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 330.075,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.1111111111111111,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "income-tax-assessment-deduction",
+        "top10": [
+          "sc-ik-59893432",
+          "sc-ik-140413099",
+          "sc-ik-178252027",
+          "sc-ik-92872185",
+          "sc-ik-47673931",
+          "sc-ik-49006086",
+          "sc-ik-96045125",
+          "sc-ik-77081689",
+          "sc-ik-181172803",
+          "sc-ik-134182438"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-59893432",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-140413099",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-178252027",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-92872185",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-47673931",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 268.675,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.0,
+          "knownRelevantRecall@10": 0.0,
+          "condensedNdcg@10": 0.7098097413968655,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "ndps-bail-prolonged-custody",
+        "top10": [
+          "hc-phhc011365222025",
+          "sc-ik-169784101",
+          "sc-ik-70780578",
+          "hc-cghc010326502025",
+          "sc-ik-68361150",
+          "sc-ik-14876924",
+          "sc-ik-88760594",
+          "sc-ik-108728085",
+          "sc-ik-156645137",
+          "sc-ik-45076621"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "hc-phhc011365222025",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-169784101",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-70780578",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "hc-cghc010326502025",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-68361150",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 237.632,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "hindu-intestate-siblings-equal-shares",
+        "top10": [
+          "sc-ik-21722097",
+          "sc-ik-140148242",
+          "sc-ik-30241407",
+          "sc-ik-115795579",
+          "sc-ik-35586554",
+          "sc-ik-179507118",
+          "sc-ik-67965481",
+          "sc-ik-128638041",
+          "sc-ik-162171512",
+          "sc-ik-70913397"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-21722097",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-140148242",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-30241407",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-115795579",
+            "label": "non_relevant"
+          },
+          {
+            "caseId": "sc-ik-35586554",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 2,
+        "unjudgedResults@5": 3,
+        "latencyMs": 418.583,
+        "metrics": {
+          "judgedPrecision@5": 0.5,
+          "judgedCoverage@5": 0.4,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.95583058934618,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 0.3333333333333333,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "tenant-heirs-rent-control-protection",
+        "top10": [
+          "sc-ik-115795579",
+          "sc-ik-154471238",
+          "sc-ik-55853298",
+          "sc-ik-89542618",
+          "sc-ik-119799454",
+          "sc-ik-180629618",
+          "sc-ik-114237665",
+          "sc-ik-62126347",
+          "sc-ik-144635991",
+          "sc-ik-68116322"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-115795579",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-154471238",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-55853298",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-89542618",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-119799454",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 278.817,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      }
+    ],
+    "hybridRrf": [
+      {
+        "id": "default-bail-charge-sheet-deadline",
+        "top10": [
+          "sc-ik-199112586",
+          "sc-ik-194334432",
+          "sc-ik-120451656",
+          "sc-ik-10807134",
+          "sc-ik-94971837",
+          "sc-ik-88760594",
+          "sc-ik-80283704",
+          "sc-ik-24360272",
+          "sc-ik-86306702",
+          "sc-ik-33298935"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-199112586",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-194334432",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-120451656",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-10807134",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-94971837",
+            "label": "relevant:1"
+          }
+        ],
+        "judgedResults@5": 2,
+        "unjudgedResults@5": 3,
+        "latencyMs": 325.043,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.4,
+          "knownRelevantMrr@10": 0.3333333333333333,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 1.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "arbitral-award-patent-illegality",
+        "top10": [
+          "sc-ik-59053192",
+          "sc-ik-88353968",
+          "sc-ik-147916054",
+          "sc-ik-79928496",
+          "sc-ik-190530250",
+          "sc-ik-48366848",
+          "sc-ik-120709208",
+          "sc-ik-173948479",
+          "sc-ik-32409083",
+          "sc-ik-120343307"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-59053192",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-88353968",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-147916054",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-79928496",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-190530250",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 346.398,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.125,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "income-tax-assessment-deduction",
+        "top10": [
+          "sc-ik-140413099",
+          "sc-ik-49006086",
+          "sc-ik-181172803",
+          "sc-ik-43859527",
+          "sc-ik-47673931",
+          "sc-ik-178252027",
+          "sc-ik-128844418",
+          "sc-ik-153340831",
+          "sc-ik-151081090",
+          "sc-ik-113971533"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-140413099",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-49006086",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-181172803",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-43859527",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-47673931",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 337.815,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.0,
+          "knownRelevantRecall@10": 0.0,
+          "condensedNdcg@10": 0.7098097413968655,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "ndps-bail-prolonged-custody",
+        "top10": [
+          "hc-phhc011365222025",
+          "sc-ik-14876924",
+          "sc-ik-156645137",
+          "sc-ik-68361150",
+          "sc-ik-88760594",
+          "hc-gahc010086212025",
+          "sc-ik-68944118",
+          "hc-hcma010040102025",
+          "sc-ik-16657776",
+          "sc-ik-57169485"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "hc-phhc011365222025",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-14876924",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-156645137",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-68361150",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-88760594",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 280.974,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "hindu-intestate-siblings-equal-shares",
+        "top10": [
+          "sc-ik-21722097",
+          "sc-ik-140148242",
+          "sc-ik-30241407",
+          "sc-ik-35586554",
+          "sc-ik-128638041",
+          "sc-ik-34963020",
+          "sc-ik-162171512",
+          "sc-ik-56175783",
+          "sc-ik-67965481",
+          "sc-ik-143363828"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-21722097",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-140148242",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-30241407",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-35586554",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-128638041",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 532.141,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "tenant-heirs-rent-control-protection",
+        "top10": [
+          "sc-ik-154471238",
+          "sc-ik-115795579",
+          "sc-ik-180629618",
+          "sc-ik-43314127",
+          "sc-ik-158079666",
+          "sc-ik-62126347",
+          "sc-ik-137893087",
+          "sc-ik-89542618",
+          "sc-ik-178752785",
+          "sc-ik-175560689"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-154471238",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-115795579",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-180629618",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-43314127",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-158079666",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 356.371,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 0.5,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 0.3333333333333333,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      }
+    ],
+    "hybridReranked": [
+      {
+        "id": "default-bail-charge-sheet-deadline",
+        "top10": [
+          "sc-ik-199112586",
+          "sc-ik-194334432",
+          "sc-ik-120451656",
+          "sc-ik-10807134",
+          "sc-ik-94971837",
+          "sc-ik-88760594",
+          "sc-ik-80283704",
+          "sc-ik-24360272",
+          "sc-ik-86306702",
+          "sc-ik-33298935"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-199112586",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-194334432",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-120451656",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-10807134",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-94971837",
+            "label": "relevant:1"
+          }
+        ],
+        "judgedResults@5": 2,
+        "unjudgedResults@5": 3,
+        "latencyMs": 1474.583,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.4,
+          "knownRelevantMrr@10": 0.3333333333333333,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 1.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "arbitral-award-patent-illegality",
+        "top10": [
+          "sc-ik-59053192",
+          "sc-ik-88353968",
+          "sc-ik-147916054",
+          "sc-ik-79928496",
+          "sc-ik-190530250",
+          "sc-ik-48366848",
+          "sc-ik-120709208",
+          "sc-ik-173948479",
+          "sc-ik-32409083",
+          "sc-ik-120343307"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-59053192",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-88353968",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-147916054",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-79928496",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-190530250",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 1559.555,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.125,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "income-tax-assessment-deduction",
+        "top10": [
+          "sc-ik-140413099",
+          "sc-ik-49006086",
+          "sc-ik-181172803",
+          "sc-ik-43859527",
+          "sc-ik-47673931",
+          "sc-ik-178252027",
+          "sc-ik-128844418",
+          "sc-ik-153340831",
+          "sc-ik-151081090",
+          "sc-ik-113971533"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-140413099",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-49006086",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-181172803",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-43859527",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-47673931",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 0,
+        "unjudgedResults@5": 5,
+        "latencyMs": 1346.277,
+        "metrics": {
+          "judgedPrecision@5": null,
+          "judgedCoverage@5": 0.0,
+          "knownRelevantMrr@10": 0.0,
+          "knownRelevantRecall@10": 0.0,
+          "condensedNdcg@10": 0.0,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "ndps-bail-prolonged-custody",
+        "top10": [
+          "hc-phhc011365222025",
+          "sc-ik-14876924",
+          "sc-ik-156645137",
+          "sc-ik-68361150",
+          "sc-ik-88760594",
+          "hc-gahc010086212025",
+          "sc-ik-68944118",
+          "hc-hcma010040102025",
+          "sc-ik-16657776",
+          "sc-ik-57169485"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "hc-phhc011365222025",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-14876924",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-156645137",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-68361150",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-88760594",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 1195.023,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.9173194127129571,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "hindu-intestate-siblings-equal-shares",
+        "top10": [
+          "sc-ik-21722097",
+          "sc-ik-140148242",
+          "sc-ik-30241407",
+          "sc-ik-35586554",
+          "sc-ik-128638041",
+          "sc-ik-34963020",
+          "sc-ik-162171512",
+          "sc-ik-56175783",
+          "sc-ik-67965481",
+          "sc-ik-143363828"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-21722097",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-140148242",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-30241407",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-35586554",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-128638041",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 1586.986,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 1.0,
+          "knownRelevantRecall@10": 0.5,
+          "condensedNdcg@10": 0.7871546029909718,
+          "pairwisePreferenceAccuracy@10": null,
+          "pairwisePreferenceCoverage@10": 0.0,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      },
+      {
+        "id": "tenant-heirs-rent-control-protection",
+        "top10": [
+          "sc-ik-154471238",
+          "sc-ik-115795579",
+          "sc-ik-180629618",
+          "sc-ik-43314127",
+          "sc-ik-158079666",
+          "sc-ik-62126347",
+          "sc-ik-137893087",
+          "sc-ik-89542618",
+          "sc-ik-178752785",
+          "sc-ik-175560689"
+        ],
+        "labelsAtTop5": [
+          {
+            "caseId": "sc-ik-154471238",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-115795579",
+            "label": "relevant:3"
+          },
+          {
+            "caseId": "sc-ik-180629618",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-43314127",
+            "label": "unjudged"
+          },
+          {
+            "caseId": "sc-ik-158079666",
+            "label": "unjudged"
+          }
+        ],
+        "judgedResults@5": 1,
+        "unjudgedResults@5": 4,
+        "latencyMs": 1415.996,
+        "metrics": {
+          "judgedPrecision@5": 1.0,
+          "judgedCoverage@5": 0.2,
+          "knownRelevantMrr@10": 0.5,
+          "knownRelevantRecall@10": 1.0,
+          "condensedNdcg@10": 1.0,
+          "pairwisePreferenceAccuracy@10": 1.0,
+          "pairwisePreferenceCoverage@10": 0.3333333333333333,
+          "explicitContradictionRateAmongJudged@5": null,
+          "explicitContradictionQueryHit@5": null,
+          "sourceLinkCoverage@10": 1.0,
+          "evidenceLocatorCoverage@10": 1.0
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Unjudged retrieved judgments are unknown, not assumed irrelevant; judged precision and condensed nDCG must be read with judged coverage.",
+    "Known-relevant recall and MRR cover only the checked-in positive labels, not every legally relevant precedent in the corpus.",
+    "These incomplete-qrel diagnostics are not exhaustive Precision@K or standard fully judged nDCG@K and must not be presented as legal-accuracy estimates.",
+    "Latency percentiles use one pass over this small regression set; they are smoke measurements, not a hardware-controlled performance benchmark.",
+    "Source-link and evidence-locator coverage test structural availability, not external-link health or independent legal verification of the cited passage.",
+    "This small regression set is not evidence of institutional legal accuracy; production evaluation needs independently reviewed, adjudicated queries across domains and courts.",
+    "Only some queries contain explicit negatives; judged precision has limited false-positive coverage for the remaining queries.",
+    "No query has reviewer-supplied contradiction labels; contradiction metrics are unavailable rather than reported as zero."
+  ]
+}

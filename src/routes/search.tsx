@@ -21,6 +21,7 @@ import {
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
 import { ResultSkeleton } from "@/components/legal/ResultSkeleton";
 import { CaseGraph } from "@/components/legal/CaseGraph";
+import { EvaluatorPanel, WorkedWalkthrough } from "@/components/legal/EvaluatorPanel";
 import {
   COURTS,
   DEFAULT_QUERY,
@@ -75,6 +76,7 @@ function SearchRoute() {
   const [graphData, setGraphData] = useState<CaseGraphResponse | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
   const [graphError, setGraphError] = useState<string | null>(null);
+  const [showWorkedWalkthrough, setShowWorkedWalkthrough] = useState(false);
   const latestRequestId = useRef(0);
   const graphRunIdRef = useRef<string | null>(null);
 
@@ -224,7 +226,16 @@ function SearchRoute() {
   };
 
   const handleSearch = () => {
+    setShowWorkedWalkthrough(false);
     executeSearch(query, filters);
+  };
+
+  const runEvaluatorWalkthrough = () => {
+    setQuery(DEFAULT_QUERY);
+    setFilters(DEFAULT_FILTERS);
+    setActiveCategory("All");
+    setShowWorkedWalkthrough(true);
+    executeSearch(DEFAULT_QUERY, DEFAULT_FILTERS);
   };
 
   const handleClear = () => {
@@ -239,6 +250,7 @@ function SearchRoute() {
     setGraphView(false);
     setGraphData(null);
     setGraphError(null);
+    setShowWorkedWalkthrough(false);
     graphRunIdRef.current = null;
     window.history.replaceState(null, "", window.location.pathname);
   };
@@ -351,8 +363,6 @@ function SearchRoute() {
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-brand-blue/20">
       <Navbar
-        activeCategory={activeCategory}
-        onSelectCategory={handleSelectCategory}
         onSearchFocus={scrollToSearch}
       />
 
@@ -397,6 +407,11 @@ function SearchRoute() {
                 onSelectCategory={handleSelectCategory}
                 filters={filters}
                 onFiltersChange={handleFilterChange}
+              />
+
+              <EvaluatorPanel
+                isSearching={isSearching}
+                onRunWalkthrough={runEvaluatorWalkthrough}
               />
 
               {!hasSearched ? (
@@ -455,11 +470,12 @@ function SearchRoute() {
                     <div className="rounded-lg border border-brand-blue/30 bg-brand-blue/5 p-3.5 text-[12.5px] leading-relaxed text-navy">
                       <strong>Local hybrid retrieval:</strong> Substantive dense retrieval and
                       deduplicated legal-term search are fused at judgment level. A transparent
-                      legal reranker then checks controlling statutes, provisions, domain, relief,
-                      material facts and contradictions before applying authority as a tie-breaker.
-                      Each result shows its relevance basis; Precision@5 is measured separately on
-                      reviewed queries, not presented as a per-case confidence score. Outcomes must
-                      be verified against the source judgment.
+                      legal-context audit then checks controlling statutes, provisions, domain,
+                      relief, material facts, contradictions and authority. Automatic rule-based
+                      reranking is evaluation-gated because the current pilot does not show an
+                      advantage over RRF. Each result shows its relevance basis; retrieval metrics
+                      are measured separately on reviewed queries, not presented as a per-case
+                      confidence score. Outcomes must be verified against the source judgment.
                     </div>
 
                     {searchMeta && !isSearching && (
@@ -485,6 +501,14 @@ function SearchRoute() {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {showWorkedWalkthrough && searchMeta && results[0] && !isSearching && (
+                      <WorkedWalkthrough
+                        query={query}
+                        result={results[0]}
+                        extractedSignals={searchMeta.extractedSignals}
+                      />
                     )}
 
                     <div className="mt-6 flex flex-col gap-4 border-b border-border pb-4">

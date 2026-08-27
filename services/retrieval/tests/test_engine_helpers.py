@@ -8,6 +8,8 @@ SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT))
 
 from app.engine import (  # noqa: E402
+    AUTHORITY_RERANK_WEIGHT,
+    LEGAL_RERANK_WEIGHT,
     RRF_K,
     SemanticEngine,
     extract_signals,
@@ -103,6 +105,8 @@ class EngineHelperTests(unittest.TestCase):
 
     def test_rrf_constant_is_documented_default(self) -> None:
         self.assertEqual(RRF_K, 60)
+        self.assertEqual(LEGAL_RERANK_WEIGHT, 0.0)
+        self.assertEqual(AUTHORITY_RERANK_WEIGHT, 0.0)
 
     def test_outcome_filter_validation_and_side_mapping(self) -> None:
         filters = SearchFilters(outcome="Petitioner / Appellant side succeeded")

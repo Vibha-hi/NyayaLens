@@ -560,7 +560,10 @@ def run_evaluation(
             "dense": "Two-vector case-level dense branch",
             "lexical": "Role-aware case-level SQLite FTS5 branch",
             "hybridRrf": "Plain case-level reciprocal-rank fusion of dense and lexical branches",
-            "hybridReranked": "Production hybrid with legal-context, contradiction and authority reranking",
+            "hybridReranked": (
+                "Production hybrid with legal-context, contradiction and authority analysis; "
+                "automatic rank adjustment is evaluation-gated"
+            ),
         },
         "labelSummary": label_summary,
         "metrics": summary,

@@ -54,6 +54,16 @@ DB_PATH = DATA_DIR / "search.db"
 MODEL_CACHE = DATA_DIR / "model-cache"
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 RRF_K = 60
+# Legal-context scores are intentionally strong enough to break close RRF ties,
+# but not strong enough to replace the measured hybrid retrieval ordering.  The
+# raw rule score uses human-readable increments (for example -0.020 for a factual
+# contradiction), so apply a fixed weight before combining it with RRF.
+# The current six-query engineering set showed that automatic legal/authority
+# adjustments reduced graded ordering quality versus plain RRF. Keep computing
+# them for transparent diagnostics, but do not alter production order until a
+# 30–50 query independently reviewed set demonstrates a reproducible benefit.
+LEGAL_RERANK_WEIGHT = 0.0
+AUTHORITY_RERANK_WEIGHT = 0.0
 INDEX_SCHEMA_VERSION = "4"
 VECTOR_SELECTOR_VERSION = "facts-decision-v3"
 LEXICAL_SELECTOR_VERSION = "source-passages-v2"
@@ -1932,9 +1942,9 @@ class SemanticEngine:
             }
         # Legal reranking is deliberately richer (central provisions, factual
         # contradictions, posture and authority), so apply it only after RRF
-        # has reduced the candidate set. Sixty cases preserves broad recall for
-        # the displayed top ten without paying the full analysis cost for 120.
-        rerank_pool_size = max(60, top_k * 6)
+        # has reduced the candidate set. Thirty cases preserve a 3x safety
+        # margin around the displayed top ten while bounding cold-run latency.
+        rerank_pool_size = max(30, top_k * 3)
         best_by_case = {
             case_id: best_by_case[case_id]
             for case_id in sorted(
@@ -1953,25 +1963,47 @@ class SemanticEngine:
         authority_by_case: dict[str, tuple[float, list[str], str]] = {}
         legal_relevance_by_case: dict[str, tuple[float, list[str], int, int]] = {}
         for case_id, chunk_id in best_by_case.items():
-            authority_by_case[case_id] = self._authority_adjustment(
+            raw_authority_adjustment, authority_reasons, bench_strength = self._authority_adjustment(
                 case_id, chunk_id, query, query_signals
             )
-            legal_relevance_by_case[case_id] = self._legal_relevance_adjustment(
-                case_id, chunk_id, query, query_profile
+            authority_by_case[case_id] = (
+                round(raw_authority_adjustment * AUTHORITY_RERANK_WEIGHT, 6),
+                authority_reasons,
+                bench_strength,
             )
-        ranked_cases = sorted(
-            best_by_case.items(),
-            key=lambda item: (
-                -(
-                    fused[item[0]]
-                    + legal_relevance_by_case[item[0]][0]
-                    + authority_by_case[item[0]][0]
+            raw_legal_adjustment, reasons, core_matches, contradictions = (
+                self._legal_relevance_adjustment(
+                    case_id, chunk_id, query, query_profile
+                )
+            )
+            legal_relevance_by_case[case_id] = (
+                round(raw_legal_adjustment * LEGAL_RERANK_WEIGHT, 6),
+                reasons,
+                core_matches,
+                contradictions,
+            )
+        if LEGAL_RERANK_WEIGHT or AUTHORITY_RERANK_WEIGHT:
+            ranked_cases = sorted(
+                best_by_case.items(),
+                key=lambda item: (
+                    -(
+                        fused[item[0]]
+                        + legal_relevance_by_case[item[0]][0]
+                        + authority_by_case[item[0]][0]
+                    ),
+                    legal_relevance_by_case[item[0]][3],
+                    -legal_relevance_by_case[item[0]][2],
+                    item[0],
                 ),
-                legal_relevance_by_case[item[0]][3],
-                -legal_relevance_by_case[item[0]][2],
-                item[0],
-            ),
-        )
+            )
+        else:
+            # Preserve the measured RRF baseline exactly while the diagnostic
+            # reranker is evaluation-gated, including deterministic case-ID
+            # tie-breaking used by the offline evaluator.
+            ranked_cases = sorted(
+                best_by_case.items(),
+                key=lambda item: (-fused[item[0]], item[0]),
+            )
 
         results: list[SearchResult] = []
         for case_id, chunk_id in ranked_cases[:top_k]:
@@ -2059,8 +2091,10 @@ class SemanticEngine:
             if case_id in lexical_ranks:
                 relevance_basis.append(f"Lexical term rank #{lexical_ranks[case_id]}")
             relevance_basis.append(f"Base hybrid RRF rank #{rrf_case_rank[case_id]}")
-            relevance_basis.append(f"Legal-intent rerank adjustment {legal_adjustment:+.6f}")
-            relevance_basis.append(f"Authority-aware final rank #{len(results) + 1}")
+            relevance_basis.append(
+                "Legal-context audit recorded; automatic reranking is evaluation-gated"
+            )
+            relevance_basis.append(f"Final hybrid RRF rank #{len(results) + 1}")
             results.append(
                 SearchResult(
                     id=case_id,
@@ -2114,7 +2148,8 @@ class SemanticEngine:
             modelVersion=self.model_version,
             retrievalMethod=(
                 f"Two-vector facts/decision dense retrieval + role-aware SQLite FTS5 + "
-                f"case-level RRF(k={RRF_K}) + legal-intent/contradiction + authority reranking"
+                f"case-level RRF(k={RRF_K}) + diagnostic legal-context/authority audit "
+                f"(automatic reranking evaluation-gated)"
             ),
             extractedSignals=query_signals,
             latencyMs=round((time.perf_counter() - started) * 1000),

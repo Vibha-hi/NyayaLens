@@ -1,70 +1,77 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Scale,
-  ShieldAlert,
-  Building2,
-  KeyRound,
-  ShieldCheck,
-  HeartHandshake,
-  Banknote,
   Menu,
   X,
   Search,
   ChevronDown,
-  Check,
-  Layers,
-  BookOpen,
+  FolderOpen,
+  FolderPlus,
   UserCircle,
+  Loader2,
 } from "lucide-react";
-import { CATEGORIES, type LegalCategory } from "@/data/precedents";
 import { useAuth } from "@/contexts/AuthContext";
 import { ModeToggle } from "@/components/mode-toggle";
+import { supabase } from "@/lib/supabase";
 
 interface NavbarProps {
-  activeCategory: LegalCategory;
-  onSelectCategory: (category: LegalCategory) => void;
+  activeCategory?: string;
+  onSelectCategory?: (category: string) => void;
   onSearchFocus?: () => void;
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Scale,
-  ShieldAlert,
-  Building2,
-  KeyRound,
-  ShieldCheck,
-  HeartHandshake,
-  Banknote,
-};
+interface Collection {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+}
 
-export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: NavbarProps) {
+export function Navbar({ onSearchFocus }: NavbarProps) {
   const { user, profile } = useAuth();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const collectionsRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
+      if (collectionsRef.current && !collectionsRef.current.contains(event.target as Node)) {
+        setCollectionsOpen(false);
       }
     }
-    if (dropdownOpen) {
+    if (collectionsOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownOpen]);
+  }, [collectionsOpen]);
 
-  const handleCategorySelect = (category: LegalCategory) => {
-    onSelectCategory(category);
-    setDropdownOpen(false);
-    setMobileMenuOpen(false);
+  // Fetch collections when dropdown opens (desktop or mobile)
+  useEffect(() => {
+    if ((!collectionsOpen && !mobileMenuOpen) || !user) return;
+    const fetchCollections = async () => {
+      setLoadingCollections(true);
+      const { data } = await supabase
+        .from("collections")
+        .select("id, name, description, color")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      setCollections(data ?? []);
+      setLoadingCollections(false);
+    };
+    fetchCollections();
+  }, [collectionsOpen, mobileMenuOpen, user]);
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate({ to: "/" });
   };
-
-  const activeCategoryInfo = CATEGORIES.find((c) => c.id === activeCategory);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/95 glass-nav shadow-xs">
@@ -73,10 +80,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
         <div className="flex items-center gap-6">
           <a
             href="/"
-            onClick={(e) => {
-              e.preventDefault();
-              onSelectCategory("All");
-            }}
+            onClick={handleLogoClick}
             className="group flex items-center gap-2.5 transition-opacity hover:opacity-90"
           >
             <div className="flex size-9 items-center justify-center rounded-lg bg-navy text-primary-foreground shadow-sm group-hover:bg-navy/90 transition-colors">
@@ -87,122 +91,113 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 <span className="font-serif text-[17.5px] font-bold tracking-tight text-navy">
                   Nyayalens
                 </span>
-
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                Local Precedent Retrieval & Analysis
+                Local Precedent Retrieval &amp; Analysis
               </p>
             </div>
           </a>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
-            {/* Categories Dropdown Trigger */}
-            <div className="relative" ref={dropdownRef}>
+            {/* Collections Dropdown */}
+            <div className="relative" ref={collectionsRef}>
               <button
                 type="button"
-                onClick={() => setDropdownOpen((prev) => !prev)}
-                aria-expanded={dropdownOpen}
+                onClick={() => {
+                  if (!user) {
+                    navigate({ to: "/auth" });
+                  } else {
+                    setCollectionsOpen((prev) => !prev);
+                  }
+                }}
+                aria-expanded={collectionsOpen}
                 aria-haspopup="true"
+                id="collections-menu-button"
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-all ${
-                  dropdownOpen || activeCategory !== "All"
+                  collectionsOpen
                     ? "bg-navy/8 text-navy font-semibold"
                     : "text-foreground/80 hover:bg-accent hover:text-navy"
                 }`}
               >
-                <Layers className="size-4 text-brand-blue" />
-                <span>
-                  {activeCategory === "All"
-                    ? "Categories"
-                    : activeCategoryInfo?.shortLabel || "Categories"}
-                </span>
+                <FolderOpen className="size-4 text-brand-blue" />
+                <span>Collections</span>
                 <ChevronDown
                   className={`size-3.5 text-muted-foreground transition-transform duration-200 ${
-                    dropdownOpen ? "rotate-180 text-navy" : ""
+                    collectionsOpen ? "rotate-180 text-navy" : ""
                   }`}
                 />
               </button>
 
-              {/* Categories Dropdown Menu */}
-              {dropdownOpen && (
-                <div className="absolute left-0 top-full mt-2 w-80 rounded-xl border border-border bg-surface p-2 animate-in fade-in-0 zoom-in-95 duration-150 z-50">
+              {/* Collections Dropdown Menu */}
+              {collectionsOpen && user && (
+                <div className="absolute left-0 top-full mt-2 w-72 rounded-xl border border-border bg-surface p-2 animate-in fade-in-0 zoom-in-95 duration-150 z-50 shadow-md">
                   <div className="px-3 py-2 border-b border-border/60 mb-1">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Browse by Legal Category
+                      My Collections
                     </p>
                     <p className="text-[11.5px] text-muted-foreground/80 mt-0.5">
-                      Apply a query template for a legal domain
+                      Saved case collections in your workspace
                     </p>
                   </div>
 
-                  <div className="max-h-[380px] overflow-y-auto space-y-1 py-1">
-                    {CATEGORIES.map((cat) => {
-                      const Icon = ICON_MAP[cat.iconName] || Scale;
-                      const isActive = activeCategory === cat.id;
-
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => handleCategorySelect(cat.id)}
-                          className={`w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                            isActive
-                              ? "bg-navy text-primary-foreground"
-                              : "text-foreground hover:bg-navy/5"
-                          }`}
+                  <div className="max-h-[320px] overflow-y-auto space-y-0.5 py-1">
+                    {loadingCollections ? (
+                      <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
+                        <Loader2 className="size-4 animate-spin" />
+                        <span className="text-[13px]">Loading…</span>
+                      </div>
+                    ) : collections.length === 0 ? (
+                      <div className="py-6 text-center">
+                        <FolderOpen className="mx-auto size-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-[13px] text-muted-foreground">No collections yet</p>
+                        <p className="text-[11.5px] text-muted-foreground/60 mt-0.5">
+                          Save cases from search to create one
+                        </p>
+                      </div>
+                    ) : (
+                      collections.map((col) => (
+                        <Link
+                          key={col.id}
+                          to="/collection"
+                          search={{ id: col.id }}
+                          onClick={() => setCollectionsOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-navy/5 group"
                         >
-                          <div
-                            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-                              isActive
-                                ? "bg-foreground/15 text-saffron"
-                                : "bg-muted text-brand-blue"
-                            }`}
-                          >
-                            <Icon className="size-4" />
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-blue/10 border border-brand-blue/20 group-hover:bg-brand-blue/15 transition-colors">
+                            <FolderOpen className="size-4 text-brand-blue" />
                           </div>
-
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span
-                                className={`font-medium ${
-                                  isActive ? "text-white" : "text-navy"
-                                }`}
-                              >
-                                {cat.label}
-                              </span>
-                              {isActive && <Check className="size-3.5 text-saffron shrink-0" />}
-                            </div>
-                            <p
-                              className={`text-[11px] ${
-                                isActive ? "text-white/80" : "text-muted-foreground"
-                              }`}
-                            >
-                              {cat.description}
-                            </p>
+                            <p className="truncate text-[13px] font-medium text-navy">{col.name}</p>
+                            {col.description && (
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {col.description}
+                              </p>
+                            )}
                           </div>
-                        </button>
-                      );
-                    })}
+                        </Link>
+                      ))
+                    )}
                   </div>
 
-                  {activeCategory !== "All" && (
-                    <div className="mt-1 pt-1.5 border-t border-border/60">
-                      <button
-                        type="button"
-                        onClick={() => handleCategorySelect("All")}
-                        className="w-full text-center py-1.5 text-[12px] font-medium text-brand-blue hover:text-navy hover:underline"
-                      >
-                        Reset to All Categories
-                      </button>
-                    </div>
-                  )}
+                  {/* Footer: go to full workspace */}
+                  <div className="mt-1 pt-1.5 border-t border-border/60">
+                    <Link
+                      to="/profile"
+                      onClick={() => setCollectionsOpen(false)}
+                      className="flex items-center justify-center gap-1.5 w-full py-1.5 text-[12px] font-medium text-brand-blue hover:text-navy hover:underline"
+                    >
+                      <FolderPlus className="size-3.5" />
+                      Manage all collections
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
           </nav>
         </div>
 
-        {/* Right Actions (Status pill, Search Jump & Auth) */}
+        {/* Right Actions */}
         <div className="flex items-center gap-3">
           {onSearchFocus && (
             <button
@@ -253,7 +248,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
       {mobileMenuOpen && (
         <div className="border-t border-border bg-surface px-4 py-4 md:hidden animate-in slide-in-from-top-2 duration-200">
           <div className="space-y-4">
-            {/* Quick action buttons */}
+            {/* Quick search button */}
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
@@ -268,55 +263,56 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
               </button>
             </div>
 
-            {/* Categories list in Mobile */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-navy uppercase tracking-wider">
-                  Select Legal Category
-                </span>
-                {activeCategory !== "All" && (
-                  <button
-                    type="button"
-                    onClick={() => handleCategorySelect("All")}
+            {/* Collections list in mobile */}
+            {user ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-navy uppercase tracking-wider">
+                    Collections
+                  </span>
+                  <Link
+                    to="/profile"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="text-[11.5px] font-medium text-brand-blue"
                   >
-                    Reset
-                  </button>
+                    View all
+                  </Link>
+                </div>
+
+                {loadingCollections ? (
+                  <div className="flex items-center gap-2 py-3 text-muted-foreground text-[13px]">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading…
+                  </div>
+                ) : collections.length === 0 ? (
+                  <p className="py-2 text-[13px] text-muted-foreground">No collections yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {collections.map((col) => (
+                      <Link
+                        key={col.id}
+                        to="/collection"
+                        search={{ id: col.id }}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg bg-background px-3.5 py-2.5 text-[13px] transition-colors hover:bg-accent"
+                      >
+                        <FolderOpen className="size-4 text-brand-blue shrink-0" />
+                        <span className="truncate font-medium text-navy">{col.name}</span>
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-1 gap-1.5">
-                {CATEGORIES.map((cat) => {
-                  const Icon = ICON_MAP[cat.iconName] || Scale;
-                  const isActive = activeCategory === cat.id;
-
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategorySelect(cat.id)}
-                      className={`flex items-center justify-between rounded-lg px-3.5 py-2.5 text-left text-[13px] transition-colors ${
-                        isActive
-                          ? "bg-navy font-semibold text-primary-foreground"
-                          : "bg-background text-foreground hover:bg-accent"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon
-                          className={`size-4 ${isActive ? "text-saffron" : "text-brand-blue"}`}
-                        />
-                        <span>{cat.label}</span>
-                      </div>
-                      {isActive && (
-                        <span className="rounded bg-saffron px-1.5 py-0.5 text-[10px] font-bold text-navy uppercase">
-                          Selected
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            ) : (
+              <Link
+                to="/auth"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg border border-border bg-background px-3.5 py-2.5 text-[13px] font-medium text-navy"
+              >
+                <UserCircle className="size-4 text-brand-blue" />
+                Sign in to see collections
+              </Link>
+            )}
           </div>
         </div>
       )}
