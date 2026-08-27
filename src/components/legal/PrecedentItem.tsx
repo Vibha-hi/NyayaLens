@@ -161,6 +161,7 @@ function getWinnerTone(value: string): WinnerTone {
   if (
     lower.includes("respondent succeeded") ||
     lower.includes("respondent/state side succeeded") ||
+    lower.includes("respondent / state") ||
     lower.includes("state won") ||
     lower.includes("state succeeded") ||
     lower.includes("dismissed") ||
@@ -198,10 +199,12 @@ function getWinnerTone(value: string): WinnerTone {
   if (
     lower.includes("appellant succeeded") ||
     lower.includes("appellant/petitioner succeeded") ||
+    lower.includes("appellant / petitioner") ||
     lower.includes("petitioner succeeded") ||
     lower.includes("petitioner won") ||
     lower.includes("applicant won") ||
     lower.includes("accused/applicant succeeded") ||
+    lower.includes("accused / applicant") ||
     lower.includes("accused succeeded") ||
     lower.includes("bail granted") ||
     lower.includes("relief granted") ||

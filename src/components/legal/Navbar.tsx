@@ -87,9 +87,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 <span className="font-serif text-[17.5px] font-bold tracking-tight text-navy">
                   Nyayalens
                 </span>
-                <span className="hidden sm:inline-block rounded bg-navy/5 px-1.5 py-0.5 text-[10px] font-semibold text-brand-blue uppercase tracking-wider">
-                  Prototype
-                </span>
+
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
                 Local Precedent Retrieval & Analysis
@@ -167,7 +165,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                             <div className="flex items-center justify-between gap-1">
                               <span
                                 className={`font-medium ${
-                                  isActive ? "text-foreground" : "text-navy"
+                                  isActive ? "text-white" : "text-navy"
                                 }`}
                               >
                                 {cat.label}
@@ -176,7 +174,7 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                             </div>
                             <p
                               className={`text-[11px] ${
-                                isActive ? "text-foreground/80" : "text-muted-foreground"
+                                isActive ? "text-white/80" : "text-muted-foreground"
                               }`}
                             >
                               {cat.description}
