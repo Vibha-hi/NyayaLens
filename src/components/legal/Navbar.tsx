@@ -83,9 +83,6 @@ export function Navbar({ activeCategory, onSelectCategory, onSearchFocus }: Navb
                 <span className="font-serif text-[17.5px] font-bold tracking-tight text-navy">
                   Nyayalens
                 </span>
-                <span className="hidden sm:inline-block rounded bg-navy/5 px-1.5 py-0.5 text-[10px] font-semibold text-brand-blue uppercase tracking-wider">
-                  Prototype
-                </span>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
                 Local Precedent Retrieval & Analysis
