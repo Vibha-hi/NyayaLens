@@ -34,7 +34,15 @@ from .legal_query import (
     extract_sections,
     profile_signals,
 )
-from .models import EvidenceLocator, SearchFilters, SearchResponse, SearchResult
+from .models import (
+    EvidenceLocator,
+    GraphEdge,
+    GraphNode,
+    GraphResponse,
+    SearchFilters,
+    SearchResponse,
+    SearchResult,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +74,11 @@ class RankedChunk:
 
 def extract_signals(text: str) -> list[str]:
     return profile_signals(analyze_legal_query(text))[:16]
+
+
+def _compact_alnum(text: str) -> str:
+    """Lowercase, alnum-only form used to match citation strings despite spacing/punctuation drift."""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
 def lexical_tokens(text: str) -> list[str]:
@@ -148,6 +161,8 @@ class SemanticEngine:
         self._citation_context_cache: dict[str, set[str]] = {}
         self._primary_profile_cache: dict[str, LegalQueryProfile] = {}
         self._case_issue_cache: dict[str, tuple[str, ...]] = {}
+        self._cites_out: dict[str, set[str]] | None = None
+        self._cited_by: dict[str, set[str]] | None = None
         self._ensure_index()
         self._load_vectors()
 
@@ -1768,3 +1783,144 @@ class SemanticEngine:
         except ValueError:
             return None
         return candidate if candidate.is_file() else None
+
+    def _ensure_citation_graph(self) -> None:
+        """Lazily build a corpus-wide "which case's text names another case's citation" graph.
+
+        Built once and cached: recent imported judgments rarely cite each other
+        (most citations point outside this narrow corpus), so this is a sparse,
+        high-precision signal rather than something computed per search.
+        """
+
+        if self._cites_out is not None and self._cited_by is not None:
+            return
+        with self._lock:
+            if self._cites_out is not None and self._cited_by is not None:
+                return
+            citation_lookup: dict[str, str] = {}
+            for case_id, case in self._cases.items():
+                compact_citation = _compact_alnum(str(case.get("citation", "")))
+                if len(compact_citation) >= 8 and any(ch.isdigit() for ch in compact_citation):
+                    citation_lookup.setdefault(compact_citation, case_id)
+
+            cites_out: dict[str, set[str]] = defaultdict(set)
+            cited_by: dict[str, set[str]] = defaultdict(set)
+            if citation_lookup:
+                alternatives = sorted(citation_lookup, key=len, reverse=True)
+                pattern = re.compile("|".join(re.escape(item) for item in alternatives))
+                for case_id, case in self._cases.items():
+                    own_citation = _compact_alnum(str(case.get("citation", "")))
+                    compact_text = _compact_alnum(self._case_full_text(case_id))
+                    for hit in set(pattern.findall(compact_text)):
+                        if hit == own_citation:
+                            continue
+                        target_id = citation_lookup[hit]
+                        if target_id == case_id:
+                            continue
+                        cites_out[case_id].add(target_id)
+                        cited_by[target_id].add(case_id)
+            self._cites_out = cites_out
+            self._cited_by = cited_by
+
+    def case_graph(self, case_ids: list[str], max_extra_neighbors: int = 15) -> GraphResponse:
+        """Build an Obsidian-style connection graph for a set of result cases.
+
+        Two distinct, honestly-labelled edge types: "cites" from detecting one
+        case's own citation string inside another case's judgment text (a real
+        textual link, not inferred), and "statute" from sharing a controlling
+        statute (a softer, always-available fallback so the graph is not empty
+        when this narrow corpus has no direct citations among the results).
+        """
+
+        seed_ids = [case_id for case_id in dict.fromkeys(case_ids) if case_id in self._cases]
+        if not seed_ids:
+            return GraphResponse(nodes=[], edges=[], citationEdgeCount=0, statuteEdgeCount=0)
+
+        self._ensure_citation_graph()
+        assert self._cites_out is not None and self._cited_by is not None
+        seed_set = set(seed_ids)
+
+        neighbor_ids: list[str] = []
+        for case_id in seed_ids:
+            for neighbor in sorted(self._cites_out.get(case_id, ())) + sorted(
+                self._cited_by.get(case_id, ())
+            ):
+                if neighbor not in seed_set and neighbor not in neighbor_ids:
+                    neighbor_ids.append(neighbor)
+        neighbor_ids = neighbor_ids[:max_extra_neighbors]
+
+        node_ids = seed_ids + neighbor_ids
+        node_id_set = set(node_ids)
+
+        edges: list[GraphEdge] = []
+        edge_pairs_seen: set[tuple[str, str]] = set()
+
+        for source in node_ids:
+            for target in sorted(self._cites_out.get(source, ())):
+                if target not in node_id_set:
+                    continue
+                pair = (source, target)
+                if pair in edge_pairs_seen:
+                    continue
+                edge_pairs_seen.add(pair)
+                target_case = self._cases[target]
+                edges.append(
+                    GraphEdge(
+                        source=source,
+                        target=target,
+                        type="cites",
+                        label=f"Cites {target_case['citation']}",
+                    )
+                )
+        citation_edge_count = len(edges)
+
+        statute_edge_count = 0
+        for i, source in enumerate(node_ids):
+            source_statutes = {
+                statute.lower(): statute
+                for statute in self._case_primary_profile(source).statutes
+            }
+            if not source_statutes:
+                continue
+            for target in node_ids[i + 1 :]:
+                if (source, target) in edge_pairs_seen or (target, source) in edge_pairs_seen:
+                    continue
+                target_statutes = {
+                    statute.lower() for statute in self._case_primary_profile(target).statutes
+                }
+                shared = sorted(source_statutes[key] for key in source_statutes if key in target_statutes)
+                if not shared:
+                    continue
+                edge_pairs_seen.add((source, target))
+                statute_edge_count += 1
+                edges.append(
+                    GraphEdge(
+                        source=source,
+                        target=target,
+                        type="statute",
+                        label="Same controlling statute: " + ", ".join(shared[:2]),
+                    )
+                )
+
+        nodes = [
+            GraphNode(
+                id=case_id,
+                title=str(self._cases[case_id]["title"]),
+                citation=str(self._cases[case_id]["citation"]),
+                court=str(self._cases[case_id].get("courtName", self._cases[case_id]["court"])),
+                year=str(self._cases[case_id]["year"]),
+                category=str(self._cases[case_id]["category"]),
+                isResult=case_id in seed_set,
+                sourceUrl=str(self._cases[case_id].get("sourceUrl"))
+                if self._cases[case_id].get("sourceUrl")
+                else f"http://127.0.0.1:8001/documents/{quote(case_id, safe='')}",
+            )
+            for case_id in node_ids
+        ]
+
+        return GraphResponse(
+            nodes=nodes,
+            edges=edges,
+            citationEdgeCount=citation_edge_count,
+            statuteEdgeCount=statute_edge_count,
+        )

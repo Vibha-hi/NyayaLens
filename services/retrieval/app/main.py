@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .engine import SemanticEngine
-from .models import HealthResponse, SearchRequest, SearchResponse
+from .models import GraphRequest, GraphResponse, HealthResponse, SearchRequest, SearchResponse
 
 
 app = FastAPI(
@@ -49,6 +49,11 @@ def health(engine: SemanticEngine = Depends(get_engine)) -> HealthResponse:
 @app.post("/search", response_model=SearchResponse, dependencies=[Depends(verify_service_secret)])
 def search(request: SearchRequest, engine: SemanticEngine = Depends(get_engine)) -> SearchResponse:
     return engine.search(request.query, request.filters, request.top_k)
+
+
+@app.post("/graph", response_model=GraphResponse, dependencies=[Depends(verify_service_secret)])
+def graph(request: GraphRequest, engine: SemanticEngine = Depends(get_engine)) -> GraphResponse:
+    return engine.case_graph(request.caseIds)
 
 
 @app.get("/documents/{case_id}")
