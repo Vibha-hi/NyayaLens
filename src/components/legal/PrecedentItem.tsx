@@ -15,6 +15,7 @@ import type { Precedent } from "@/data/precedents";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { SaveCaseModal } from "@/components/legal/SaveCaseModal";
+import { summarizeCaseFn } from "@/api/summarize";
 
 function HighlightedEvidence({
   text,
@@ -354,6 +355,10 @@ export function PrecedentItem({
   const navigate = useNavigate();
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Check if case is already saved by this user
   useEffect(() => {
@@ -377,6 +382,24 @@ export function PrecedentItem({
     }
     setShowSaveModal(true);
   };
+  
+  const handleUnderstand = async () => {
+    if (summary) {
+      setSummary(null);
+      return;
+    }
+    setIsSummarizing(true);
+    setSummaryError(null);
+    try {
+      const data = await summarizeCaseFn({ data: precedent.id });
+      setSummary(data.summary);
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : "Failed to generate summary");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+  
   const panelId = `why-${precedent.id}`;
 
   return (
@@ -560,6 +583,16 @@ export function PrecedentItem({
                 Why it matched
               </button>
 
+              <button
+                type="button"
+                onClick={handleUnderstand}
+                disabled={isSummarizing}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12.5px] font-medium text-brand-blue hover:bg-brand-blue/10 disabled:opacity-50"
+              >
+                <HelpCircle className="size-3.5" aria-hidden="true" />
+                {isSummarizing ? "Understanding..." : (summary ? "Close Summary" : "Understand")}
+              </button>
+
               <a
                 href={precedent.sourceUrl}
                 target="_blank"
@@ -570,6 +603,20 @@ export function PrecedentItem({
                 Open source document
               </a>
             </div>
+
+            {(summary || summaryError) && (
+              <div className="mt-4 rounded-md border border-brand-blue/20 bg-brand-blue/5 p-4 text-[13.5px] leading-relaxed text-foreground">
+                <h4 className="font-semibold text-brand-blue mb-2 flex items-center gap-2">
+                  <HelpCircle className="size-4" />
+                  Gemini AI Summary
+                </h4>
+                {summaryError ? (
+                  <p className="text-red-600">{summaryError}</p>
+                ) : (
+                  <div className="whitespace-pre-wrap">{summary}</div>
+                )}
+              </div>
+            )}
 
             <div
               id={panelId}

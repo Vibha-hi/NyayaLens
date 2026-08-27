@@ -2170,6 +2170,13 @@ class SemanticEngine:
             return None
         return candidate if candidate.is_file() else None
 
+    def document_text(self, case_id: str) -> str | None:
+        """Return all evidence chunk text for a case joined as a single string."""
+        chunk_ids = self._chunks_by_case.get(case_id)
+        if not chunk_ids:
+            return None
+        return "\n\n".join(str(self._chunks[chunk_id]["evidence"]) for chunk_id in chunk_ids)
+
     @staticmethod
     def _register_unique_lookup(lookup: dict[str, str], ambiguous: set[str], key: str, case_id: str) -> None:
         if not key or key in ambiguous:
