@@ -57,9 +57,9 @@ export function SearchPanel({
   const wordCount = query.trim().length === 0 ? 0 : query.trim().split(/\s+/).length;
   const queryUnsupported = !isEmpty && !isSupportedSearchQuery(query);
   const activeAdvancedCount = [
-    filters.court !== "All Courts",
-    filters.year !== "All Years",
-    filters.outcome !== "Any Outcome",
+    filters.courts.length > 0,
+    !!filters.dateFrom || !!filters.dateTo,
+    filters.outcomes.length > 0,
   ].filter(Boolean).length;
 
   const handleApplySample = (sampleQuery: string, catId: LegalCategory) => {
@@ -87,15 +87,16 @@ export function SearchPanel({
 
           <p className="mt-3.5 text-[16px] leading-relaxed text-muted-foreground max-w-3xl">
             Enter anonymized facts, statutory provisions, or procedural questions. The local engine
-            combines <strong className="text-navy font-semibold">dense passage retrieval</strong>{" "}
-            with <strong className="text-navy font-semibold">exact legal-term search</strong> over
+            combines{" "}
+            <strong className="text-foreground font-semibold">dense passage retrieval</strong> with{" "}
+            <strong className="text-foreground font-semibold">exact legal-term search</strong> over
             the imported Supreme Court and High Court judgment corpus.
           </p>
         </div>
 
         {/* Search Box Card with Glow & Focus */}
         <form
-          className="mt-8 max-w-4xl rounded-2xl border-2 border-border bg-surface p-5 sm:p-7 shadow-lg transition-all focus-within:border-brand-blue focus-within:ring-4 focus-within:ring-brand-blue/15"
+          className="mt-8 max-w-4xl rounded-2xl border-2 border-border bg-card p-5 sm:p-7 transition-all focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/15"
           onSubmit={(event) => {
             event.preventDefault();
             if (!isEmpty && !queryUnsupported) {
@@ -189,7 +190,7 @@ export function SearchPanel({
               <button
                 type="submit"
                 disabled={isEmpty || queryUnsupported || isSearching}
-                className="inline-flex items-center gap-2.5 rounded-xl bg-navy px-6 py-3 text-[14.5px] font-semibold text-primary-foreground shadow-md transition-all hover:bg-navy/90 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                className="inline-flex items-center gap-2.5 rounded-xl bg-navy px-6 py-3 text-[14.5px] font-semibold text-primary-foreground transition-all hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
               >
                 {isSearching ? (
                   <>
@@ -219,7 +220,7 @@ export function SearchPanel({
                   <SlidersHorizontal className="size-4 text-brand-blue" aria-hidden="true" />
                   <span>Advanced search</span>
                   {activeAdvancedCount > 0 && (
-                    <span className="rounded-full bg-navy px-1.5 py-0.5 text-[10px] text-white">
+                    <span className="rounded-full bg-navy px-1.5 py-0.5 text-[10px] text-primary-foreground">
                       {activeAdvancedCount}
                     </span>
                   )}
@@ -232,7 +233,7 @@ export function SearchPanel({
                 {advancedOpen && (
                   <div
                     id="advanced-search-panel"
-                    className="absolute top-[calc(100%+0.6rem)] left-0 z-30 w-[min(23rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-4 shadow-xl"
+                    className="absolute top-[calc(100%+0.6rem)] left-0 z-30 w-[min(23rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -249,9 +250,10 @@ export function SearchPanel({
                           onClick={() =>
                             onFiltersChange({
                               ...filters,
-                              court: "All Courts",
-                              year: "All Years",
-                              outcome: "Any Outcome",
+                              courts: [],
+                              dateFrom: "",
+                              dateTo: "",
+                              outcomes: [],
                             })
                           }
                           className="text-[11px] font-medium text-brand-blue hover:underline"
@@ -265,9 +267,13 @@ export function SearchPanel({
                       <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
                         Court level
                         <select
-                          value={filters.court}
+                          value={filters.courts.length === 1 ? filters.courts[0] : "All Courts"}
                           onChange={(event) =>
-                            onFiltersChange({ ...filters, court: event.target.value })
+                            onFiltersChange({
+                              ...filters,
+                              courts:
+                                event.target.value === "All Courts" ? [] : [event.target.value],
+                            })
                           }
                           className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
                         >
@@ -281,9 +287,19 @@ export function SearchPanel({
                       <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
                         Decision year
                         <select
-                          value={filters.year}
+                          value={filters.dateFrom ? filters.dateFrom.substring(0, 4) : "All Years"}
                           onChange={(event) =>
-                            onFiltersChange({ ...filters, year: event.target.value })
+                            onFiltersChange({
+                              ...filters,
+                              dateFrom:
+                                event.target.value === "All Years"
+                                  ? ""
+                                  : `${event.target.value}-01-01`,
+                              dateTo:
+                                event.target.value === "All Years"
+                                  ? ""
+                                  : `${event.target.value}-12-31`,
+                            })
                           }
                           className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
                         >
@@ -297,9 +313,15 @@ export function SearchPanel({
                       <label className="grid gap-1.5 text-[11.5px] font-semibold text-navy">
                         Requested outcome
                         <select
-                          value={filters.outcome}
+                          value={
+                            filters.outcomes.length === 1 ? filters.outcomes[0] : "Any Outcome"
+                          }
                           onChange={(event) =>
-                            onFiltersChange({ ...filters, outcome: event.target.value })
+                            onFiltersChange({
+                              ...filters,
+                              outcomes:
+                                event.target.value === "Any Outcome" ? [] : [event.target.value],
+                            })
                           }
                           className="rounded-md border border-border bg-background px-3 py-2 text-[12.5px] font-normal text-foreground outline-none focus:border-brand-blue"
                         >
