@@ -59,7 +59,7 @@ LEGAL_CONCEPTS: dict[str, tuple[str, ...]] = {
 DOMAIN_PATTERNS: dict[str, tuple[str, ...]] = {
     "Bail / Criminal Procedure": (
         "bail / criminal procedure", "regular bail", "anticipatory bail", "default bail", "bail",
-        "accused", "custody", "charge sheet", "fir", "crpc", "bnss", "criminal appeal",
+        "release pending trial", "pre-trial release", "pre-arrest release",
     ),
     "Succession / Inheritance": (
         "hindu succession", "inheritance", "legal heir", "intestate", "last will", "probate",
@@ -112,7 +112,7 @@ DOMAIN_PATTERNS: dict[str, tuple[str, ...]] = {
         "passing off",
     ),
     "Criminal Substantive Law": (
-        "indian penal code", "bharatiya nyaya sanhita", "murder", "culpable homicide",
+        "indian penal code", "bharatiya nyaya sanhita", "ipc", "bns", "murder", "culpable homicide",
         "criminal conspiracy", "cheating offence",
     ),
 }
@@ -229,6 +229,7 @@ FACT_PATTERNS: dict[str, dict[str, tuple[str, ...]]] = {
         "pending": (
             "investigation is pending", "investigation pending", "investigation is incomplete",
             "charge sheet not filed", "charge sheet has not been filed", "charge-sheet has not been filed",
+            "no charge sheet has been filed", "no charge-sheet has been filed",
             "no charge sheet", "final report has not been filed",
         ),
     },
@@ -252,6 +253,7 @@ FACT_PATTERNS: dict[str, dict[str, tuple[str, ...]]] = {
             "will not abscond", "not likely to abscond", "did not abscond", "has not absconded",
             "cannot abscond", "no possibility of absconding", "no likelihood of absconding",
             "no allegation that the accused may abscond", "no allegation that the applicant may abscond",
+            "no allegation that he may abscond",
         ),
         "present": ("flight risk", "likely to abscond", "may abscond", "fled from justice", "absconding accused"),
     },
@@ -265,13 +267,16 @@ FACT_PATTERNS: dict[str, dict[str, tuple[str, ...]]] = {
             "no allegation that the applicant may influence witnesses",
             "no allegation that the accused may abscond or influence witnesses",
             "no allegation that the applicant may abscond or influence witnesses",
+            "no allegation that he may influence witnesses",
+            "no allegation that he may abscond or influence witnesses",
         ),
         "present": ("witness interference", "influence witnesses", "witness tampering", "threatened the witness", "threatened witnesses", "intimidated witnesses"),
     },
     "succession_mode": {
         "intestate": (
             "died intestate", "died without a will", "no will", "no valid will", "invalid will",
-            "will was invalid", "will is invalid", "intestate succession",
+            "without a valid will", "without valid will", "will was invalid", "will is invalid",
+            "intestate succession",
         ),
         "testamentary": ("left a will", "executed a will", "valid will", "testamentary succession", "probate of the will"),
     },
@@ -296,7 +301,8 @@ FACT_PATTERNS: dict[str, dict[str, tuple[str, ...]]] = {
     "will_status": {
         "invalid_or_absent": (
             "no valid will", "invalid will", "will was invalid", "will is invalid",
-            "revoked will", "died without a will", "no will",
+            "without a valid will", "without valid will", "revoked will",
+            "died without a will", "no will",
         ),
         "valid": ("valid will", "duly executed will", "proved the will", "probate of the will"),
     },
@@ -334,6 +340,20 @@ def _matched_labels(text: str, patterns: dict[str, tuple[str, ...]]) -> tuple[st
         for label, variants in patterns.items()
         if any(_contains_phrase(text, variant) for variant in variants)
     )
+
+
+def _phrase_spans(text: str, phrase: str) -> list[tuple[int, int]]:
+    """Return literal phrase spans on token boundaries.
+
+    Boundary matching avoids treating ``valid will`` inside ``invalid will`` as
+    an opposite fact. Longer negated formulations are handled in
+    :func:`extract_facts`, where contained positive phrases are discarded.
+    """
+
+    pattern = re.compile(
+        rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])"
+    )
+    return [(match.start(), match.end()) for match in pattern.finditer(text)]
 
 
 def extract_sections(text: str) -> tuple[str, ...]:
@@ -427,17 +447,31 @@ def extract_facts(text: str) -> tuple[tuple[str, str], ...]:
     lowered = text.lower()
     facts: list[tuple[str, str]] = []
     for name, values in FACT_PATTERNS.items():
-        matched_values: list[tuple[int, str]] = []
+        matched_values: list[tuple[int, int, str]] = []
         for value, variants in values.items():
-            positions = [lowered.find(variant) for variant in variants if _contains_phrase(lowered, variant)]
-            if positions:
-                matched_values.append((min(position for position in positions if position >= 0), value))
+            for variant in variants:
+                matched_values.extend(
+                    (start, end, value)
+                    for start, end in _phrase_spans(lowered, variant)
+                )
         if matched_values:
-            # If a passage discusses multiple legal regimes or both sides of a
-            # factual issue, use the first explicit formulation as the passage's
-            # primary signal. Query-side negative phrases are intentionally listed
-            # in full, so their position precedes the positive words they contain.
-            facts.append((name, min(matched_values)[1]))
+            effective_matches = [
+                match
+                for match in matched_values
+                if not any(
+                    other_value != match[2]
+                    and other_start <= match[0]
+                    and other_end >= match[1]
+                    and (other_start, other_end) != (match[0], match[1])
+                    for other_start, other_end, other_value in matched_values
+                )
+            ]
+            # Judgments ordinarily state allegations/submissions before the
+            # Court's own factual conclusion. Prefer the last independent,
+            # explicit formulation while ignoring positive words nested inside a
+            # longer negation (for example "not likely to abscond").
+            chosen = max(effective_matches or matched_values, key=lambda item: (item[0], item[1] - item[0]))
+            facts.append((name, chosen[2]))
     return tuple(facts)
 
 
@@ -455,6 +489,7 @@ def analyze_legal_query(text: str, *, infer_intent: bool = True) -> LegalQueryPr
     concepts = list(_matched_labels(catalog_text, LEGAL_CONCEPTS))
     domains = list(_matched_labels(catalog_text, DOMAIN_PATTERNS))
     reliefs = list(_matched_labels(lowered, RELIEF_PATTERNS))
+    postures = _matched_labels(lowered, POSTURE_PATTERNS)
     facts = extract_facts(lowered)
     fact_values = dict(facts)
     if fact_values.get("flight_risk") == "absent" and "Flight Risk" in concepts:
@@ -464,14 +499,30 @@ def analyze_legal_query(text: str, *, infer_intent: bool = True) -> LegalQueryPr
         and "Witness Interference" in concepts
     ):
         concepts.remove("Witness Interference")
-    # Plain-language bail descriptions often omit the word "bail" entirely.
-    # A combination of accused/applicant + custody + pending/delayed trial is a
-    # conservative signal that release pending trial is the relief being sought.
-    implied_bail = (
-        ("accused" in lowered or "applicant" in lowered)
-        and ("custody" in lowered or "incarcerat" in lowered or "detention" in lowered)
-        and ("trial" in lowered or "investigation" in lowered or "charge sheet" in lowered)
+    # Plain-language bail descriptions sometimes omit the word "bail". Infer
+    # that intent only from an express release request or a combination of
+    # prolonged pre-trial custody, trial delay, and another recognised bail
+    # consideration. Generic merits narratives also contain accused/FIR/
+    # charge-sheet/custody terminology and must not be forced into bail.
+    release_request = any(
+        phrase in lowered
+        for phrase in (
+            "release from custody", "release pending trial", "be released pending trial",
+            "seeks release", "seeking release", "requests release",
+        )
     )
+    prolonged_pretrial_custody = (
+        ("accused" in lowered or "applicant" in lowered)
+        and fact_values.get("custody_status") == "prolonged"
+        and fact_values.get("trial_status") == "delayed"
+    )
+    additional_bail_factor = (
+        fact_values.get("investigation_status") == "complete"
+        or fact_values.get("flight_risk") in {"absent", "present"}
+        or fact_values.get("witness_interference") in {"absent", "present"}
+        or "Documentary Evidence" in concepts
+    )
+    implied_bail = release_request or (prolonged_pretrial_custody and additional_bail_factor)
     if infer_intent and implied_bail:
         if "Regular Bail" not in concepts:
             concepts.append("Regular Bail")
@@ -485,7 +536,7 @@ def analyze_legal_query(text: str, *, infer_intent: bool = True) -> LegalQueryPr
         statutes=extract_statutes(lowered),
         sections=extract_sections(lowered),
         provision_pairs=extract_provision_pairs(lowered),
-        postures=_matched_labels(lowered, POSTURE_PATTERNS),
+        postures=postures,
         reliefs=tuple(reliefs),
         relationships=_matched_labels(lowered, RELATIONSHIP_PATTERNS),
         facts=facts,

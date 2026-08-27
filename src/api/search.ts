@@ -41,7 +41,10 @@ export const searchCasesFn = createServerFn({ method: "POST" })
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("The local retrieval service timed out. Please try again.");
       }
-      throw error;
+      console.error("Retrieval service request failed", error);
+      throw new Error(
+        "The retrieval service is unavailable. Start the project with `npm run dev` and try again.",
+      );
     } finally {
       clearTimeout(timeout);
     }

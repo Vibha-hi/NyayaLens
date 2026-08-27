@@ -1,6 +1,21 @@
 import { z } from "zod";
 import type { Precedent } from "@/data/precedents";
 
+const LEGAL_CITATION_QUERY =
+  /(?:\bAIR\s+(?:19|20)\d{2}\s+[A-Z]{1,12}\s+\d+\b|\(?\b(?:19|20)\d{2}\)?\s+(?:\d+\s+)?(?:SCC(?:\s+ON(?:LINE|L))?(?:\s+[A-Z]{1,12})?|SCR|INSC|Cri\.?\s*L\.?\s*J\.?)\s+\d+\b)/i;
+const LEGAL_CASE_TITLE_QUERY =
+  /\b[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\s+(?:v\.?|vs\.?|versus)\s+[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\b/i;
+
+export function isExactLegalLookup(value: string): boolean {
+  const cleaned = value.trim();
+  return LEGAL_CITATION_QUERY.test(cleaned) || LEGAL_CASE_TITLE_QUERY.test(cleaned);
+}
+
+export function isSupportedSearchQuery(value: string): boolean {
+  const cleaned = value.trim().replace(/\s+/g, " ");
+  return isExactLegalLookup(cleaned) || (cleaned.length >= 20 && cleaned.split(/\s+/).length >= 4);
+}
+
 export const searchFiltersSchema = z.object({
   court: z.enum(["All Courts", "Supreme Court", "High Court"]),
   year: z.union([z.literal("All Years"), z.string().regex(/^(19|20)\d{2}$/)]),
@@ -47,10 +62,11 @@ export const searchRequestSchema = z.object({
   query: z
     .string()
     .trim()
-    .min(20, "Describe the matter using at least 20 characters.")
+    .min(5, "Enter a case title, citation, or a fuller description.")
     .max(4000)
-    .refine((value) => value.split(/\s+/).length >= 4, {
-      message: "Describe the matter using at least four meaningful words.",
+    .refine(isSupportedSearchQuery, {
+      message:
+        "Enter a recognized case title/citation, or describe at least four meaningful words and 20 characters.",
     }),
   filters: searchFiltersSchema,
   topK: z.number().int().min(1).max(20).default(10),

@@ -20,6 +20,7 @@ import {
   type LegalCategory,
 } from "@/data/precedents";
 import type { Filters } from "@/components/legal/FilterPanel";
+import { isSupportedSearchQuery } from "@/contracts/search";
 
 interface SearchPanelProps {
   query: string;
@@ -54,7 +55,7 @@ export function SearchPanel({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isEmpty = query.trim().length === 0;
   const wordCount = query.trim().length === 0 ? 0 : query.trim().split(/\s+/).length;
-  const queryTooShort = !isEmpty && (query.trim().length < 20 || wordCount < 4);
+  const queryUnsupported = !isEmpty && !isSupportedSearchQuery(query);
   const activeAdvancedCount = [
     filters.court !== "All Courts",
     filters.year !== "All Years",
@@ -97,7 +98,7 @@ export function SearchPanel({
           className="mt-8 max-w-4xl rounded-2xl border-2 border-border bg-surface p-5 sm:p-7 shadow-lg transition-all focus-within:border-brand-blue focus-within:ring-4 focus-within:ring-brand-blue/15"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!isEmpty && !queryTooShort) {
+            if (!isEmpty && !queryUnsupported) {
               setAdvancedOpen(false);
               onSearch();
             }
@@ -138,9 +139,10 @@ export function SearchPanel({
               </div>
             )}
           </div>
-          {queryTooShort && (
+          {queryUnsupported && (
             <p className="mt-2 text-[11.5px] font-medium text-amber-800" role="alert">
-              Describe the matter using at least four meaningful words and 20 characters.
+              Enter a case title/citation, or describe at least four meaningful words and 20
+              characters.
             </p>
           )}
 
@@ -186,7 +188,7 @@ export function SearchPanel({
             <div className="flex items-center gap-3">
               <button
                 type="submit"
-                disabled={isEmpty || queryTooShort || isSearching}
+                disabled={isEmpty || queryUnsupported || isSearching}
                 className="inline-flex items-center gap-2.5 rounded-xl bg-navy px-6 py-3 text-[14.5px] font-semibold text-primary-foreground shadow-md transition-all hover:bg-navy/90 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
               >
                 {isSearching ? (

@@ -21,7 +21,7 @@ class ReleaseSetupTests(unittest.TestCase):
         self.assertRegex(manifest["sha256"], r"^[0-9a-f]{64}$")
         self.assertEqual(manifest["releaseTag"], "retrieval-corpus-v2")
         self.assertEqual(manifest["caseCount"], 4609)
-        self.assertEqual(manifest["chunkCount"], 151653)
+        self.assertEqual(manifest["chunkCount"], 165177)
         self.assertEqual(manifest["vectorCount"], 9218)
         self.assertEqual(manifest["schemaVersion"], "4")
         self.assertEqual(manifest["vectorSelectorVersion"], "facts-decision-v3")

@@ -50,6 +50,29 @@ class LegalQueryAnalysisTests(unittest.TestCase):
         self.assertEqual(facts["flight_risk"], "absent")
         self.assertEqual(facts["witness_interference"], "absent")
 
+    def test_later_court_finding_overrides_earlier_party_risk_allegation(self) -> None:
+        profile = analyze_legal_query(
+            "The State alleged that the accused was likely to abscond and had threatened "
+            "witnesses. After examining the record, the Court finds there is no flight risk "
+            "and that the accused has not threatened witnesses."
+        )
+        facts = dict(profile.facts)
+        self.assertEqual(facts["flight_risk"], "absent")
+        self.assertEqual(facts["witness_interference"], "absent")
+        self.assertNotIn("Flight Risk", profile.concepts)
+        self.assertNotIn("Witness Interference", profile.concepts)
+
+    def test_later_court_finding_can_reject_earlier_party_denial(self) -> None:
+        profile = analyze_legal_query(
+            "The accused submitted that there was no flight risk and no witness interference. "
+            "The Court later finds that he is likely to abscond and had threatened witnesses."
+        )
+        facts = dict(profile.facts)
+        self.assertEqual(facts["flight_risk"], "present")
+        self.assertEqual(facts["witness_interference"], "present")
+        self.assertIn("Flight Risk", profile.concepts)
+        self.assertIn("Witness Interference", profile.concepts)
+
     def test_invalid_will_is_not_treated_as_testamentary_succession(self) -> None:
         profile = analyze_legal_query(
             "The alleged will is invalid, so the estate must devolve without a valid will."
@@ -98,6 +121,31 @@ class LegalQueryAnalysisTests(unittest.TestCase):
             "The disputed amount was Rs. 4.11 crore under the agreement."
         )
         self.assertIn("4.11", profile.quantities)
+
+    def test_criminal_merits_query_is_not_inferred_as_bail(self) -> None:
+        profile = analyze_legal_query(
+            "The accused was named in the FIR and a charge sheet was filed. He remained in "
+            "custody for over two years before the trial court convicted him under Section 420 "
+            "IPC. His criminal appeal challenges whether the evidence proves dishonest inducement."
+        )
+        self.assertIn("Criminal Substantive Law", profile.domains)
+        self.assertIn("Indian Penal Code, 1860", profile.statutes)
+        self.assertIn("Section 420", profile.sections)
+        self.assertNotIn("Bail / Criminal Procedure", profile.domains)
+        self.assertNotIn("Regular Bail", profile.concepts)
+        self.assertNotIn("Bail", profile.reliefs)
+
+    def test_strong_plain_language_pretrial_facts_still_imply_bail(self) -> None:
+        profile = analyze_legal_query(
+            "The accused has remained in custody for over two years. The investigation is "
+            "complete, the charge sheet has been filed, and the trial is unlikely to conclude "
+            "soon. There is no allegation that he may abscond or influence witnesses."
+        )
+        self.assertIn("Bail / Criminal Procedure", profile.domains)
+        self.assertIn("Regular Bail", profile.concepts)
+        self.assertIn("Bail", profile.reliefs)
+        self.assertEqual(dict(profile.facts)["flight_risk"], "absent")
+        self.assertEqual(dict(profile.facts)["witness_interference"], "absent")
 
     def test_tenancy_is_primary_without_inventing_a_spousal_dispute(self) -> None:
         profile = analyze_legal_query(

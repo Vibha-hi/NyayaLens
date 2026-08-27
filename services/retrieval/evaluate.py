@@ -1,4 +1,4 @@
-"""Run a small, versioned retrieval evaluation over dense, lexical and hybrid ranks.
+"""Compare dense, lexical, plain-RRF and reranked retrieval on versioned qrels.
 
 The checked-in qrels are intentionally incomplete: a judgment absent from a
 query's labels is *unjudged*, not irrelevant. Metrics in this module therefore
@@ -10,32 +10,66 @@ legal relevance ground truth.
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
+import subprocess
+import time
+from collections import defaultdict
+from datetime import datetime, timezone
 from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-from app.engine import SemanticEngine
+from app.engine import (
+    INDEX_SCHEMA_VERSION,
+    LEXICAL_SELECTOR_VERSION,
+    RRF_K,
+    VECTOR_SELECTOR_VERSION,
+    SemanticEngine,
+)
 from app.models import SearchFilters
 
 
 GOLDEN_PATH = Path(__file__).resolve().parent / "evaluation" / "golden_queries.json"
 IMPORTED_GOLDEN_PATH = Path(__file__).resolve().parent / "evaluation" / "import_regression_queries.json"
-
-
-def unique_case_ids(engine: SemanticEngine, chunk_ids: list[str]) -> list[str]:
-    case_ids: list[str] = []
-    for chunk_id in chunk_ids:
-        case_id = engine._chunks[chunk_id]["case_id"]
-        if case_id not in case_ids:
-            case_ids.append(case_id)
-    return case_ids
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def deduplicate(ranked: list[str]) -> list[str]:
     """Preserve rank order while ensuring a judgment is evaluated only once."""
     return list(dict.fromkeys(ranked))
+
+
+def rrf_fuse_case_rankings(
+    *rankings: list[str], k: int = RRF_K
+) -> list[str]:
+    """Fuse case-level rankings without legal-intent or authority reranking."""
+
+    if k <= 0:
+        raise ValueError("RRF k must be positive")
+    scores: dict[str, float] = defaultdict(float)
+    for ranking in rankings:
+        for rank, case_id in enumerate(deduplicate(ranking), start=1):
+            scores[case_id] += 1.0 / (k + rank)
+    return sorted(scores, key=lambda case_id: (-scores[case_id], case_id))
+
+
+def percentile(values: list[float], probability: float) -> float | None:
+    """Return a linearly interpolated percentile for a small timing sample."""
+
+    if not values:
+        return None
+    if not 0 <= probability <= 1:
+        raise ValueError("Percentile probability must be between zero and one")
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * probability
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return round(ordered[lower], 3)
+    weight = position - lower
+    return round(ordered[lower] * (1 - weight) + ordered[upper] * weight, 3)
 
 
 def reciprocal_rank(ranked: list[str], relevant: set[str], cutoff: int = 10) -> float | None:
@@ -161,8 +195,11 @@ def _normalise_labels(item: dict[str, Any]) -> dict[str, Any]:
             or not isinstance(raw_grade, int)
             or isinstance(raw_grade, bool)
             or raw_grade < 0
+            or raw_grade > 3
         ):
-            raise ValueError(f"{item.get('id', '<unknown>')}: relevance grades must be non-negative integers")
+            raise ValueError(
+                f"{item.get('id', '<unknown>')}: relevance grades must be integers from 0 to 3"
+            )
         relevance[case_id] = raw_grade
 
     non_relevant_raw = item.get("non_relevant", [])
@@ -245,6 +282,100 @@ def _load_golden(path: Path) -> list[dict[str, Any]]:
     return golden
 
 
+def validate_qrel_case_ids(
+    golden: list[dict[str, Any]], active_case_ids: set[str]
+) -> None:
+    """Fail before scoring when labels target a different corpus snapshot."""
+
+    missing_by_query: dict[str, list[str]] = {}
+    for item in golden:
+        judged = _normalise_labels(item)["judged"]
+        missing = sorted(judged - active_case_ids)
+        if missing:
+            missing_by_query[item["id"]] = missing
+    if missing_by_query:
+        details = "; ".join(
+            f"{query_id}: {', '.join(case_ids)}"
+            for query_id, case_ids in missing_by_query.items()
+        )
+        raise ValueError(
+            "Evaluation qrels reference judgments absent from the active corpus: "
+            + details
+        )
+
+
+def coverage_at(
+    ranked: list[str], available_case_ids: set[str], cutoff: int = 10
+) -> float | None:
+    returned = deduplicate(ranked)[:cutoff]
+    if not returned:
+        return None
+    return sum(case_id in available_case_ids for case_id in returned) / len(returned)
+
+
+def _branch_case_ranking(
+    engine: SemanticEngine, ranked_chunks: list[Any]
+) -> tuple[list[str], dict[str, str]]:
+    ranked: list[str] = []
+    chunk_by_case: dict[str, str] = {}
+    for result in ranked_chunks:
+        case_id = engine._chunks[result.chunk_id]["case_id"]
+        if case_id not in chunk_by_case:
+            ranked.append(case_id)
+            chunk_by_case[case_id] = result.chunk_id
+    return ranked, chunk_by_case
+
+
+def _source_available_case_ids(
+    engine: SemanticEngine, ranked: list[str]
+) -> set[str]:
+    available: set[str] = set()
+    for case_id in deduplicate(ranked):
+        case = engine._cases.get(case_id, {})
+        if str(case.get("sourceUrl", "")).strip() or engine.document_path(case_id) is not None:
+            available.add(case_id)
+    return available
+
+
+def _chunk_locator_available_case_ids(
+    engine: SemanticEngine, chunk_by_case: dict[str, str]
+) -> set[str]:
+    available: set[str] = set()
+    for case_id, chunk_id in chunk_by_case.items():
+        chunk = engine._chunks[chunk_id]
+        if (
+            str(chunk.get("evidence", "")).strip()
+            and str(chunk.get("section", "")).strip()
+            and str(chunk.get("paragraph", "")).strip()
+        ):
+            available.add(case_id)
+    return available
+
+
+def _git_revision() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unavailable"
+    return result.stdout.strip() or "unavailable"
+
+
+def persist_json_report(report: dict[str, Any], output_path: Path) -> str:
+    """Persist the same JSON document that remains available on stdout."""
+
+    rendered = json.dumps(report, indent=2)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(rendered + "\n", encoding="utf-8")
+    return rendered
+
+
 def _label_summary(golden: list[dict[str, Any]]) -> dict[str, int]:
     labels = [_normalise_labels(item) for item in golden]
     return {
@@ -253,6 +384,9 @@ def _label_summary(golden: list[dict[str, Any]]) -> dict[str, int]:
         "knownRelevantJudgments": sum(len(label["relevant"]) for label in labels),
         "explicitNegativeJudgments": sum(
             len(label["judged"] - label["relevant"]) for label in labels
+        ),
+        "queriesWithExplicitNegatives": sum(
+            bool(label["judged"] - label["relevant"]) for label in labels
         ),
         "gradedPreferencePairs": sum(
             len(graded_preference_pairs(label["relevance"])) for label in labels
@@ -267,11 +401,18 @@ def _limitations(label_summary: dict[str, int]) -> list[str]:
     notes = [
         "Unjudged retrieved judgments are unknown, not assumed irrelevant; judged precision and condensed nDCG must be read with judged coverage.",
         "Known-relevant recall and MRR cover only the checked-in positive labels, not every legally relevant precedent in the corpus.",
+        "These incomplete-qrel diagnostics are not exhaustive Precision@K or standard fully judged nDCG@K and must not be presented as legal-accuracy estimates.",
+        "Latency percentiles use one pass over this small regression set; they are smoke measurements, not a hardware-controlled performance benchmark.",
+        "Source-link and evidence-locator coverage test structural availability, not external-link health or independent legal verification of the cited passage.",
         "This small regression set is not evidence of institutional legal accuracy; production evaluation needs independently reviewed, adjudicated queries across domains and courts.",
     ]
     if label_summary["explicitNegativeJudgments"] == 0:
         notes.append(
             "No explicit negative judgments are labelled, so judged precision cannot measure false positives reliably."
+        )
+    elif label_summary["queriesWithExplicitNegatives"] < label_summary["queries"]:
+        notes.append(
+            "Only some queries contain explicit negatives; judged precision has limited false-positive coverage for the remaining queries."
         )
     if label_summary["queriesWithContradictionReview"] == 0:
         notes.append(
@@ -280,10 +421,12 @@ def _limitations(label_summary: dict[str, int]) -> list[str]:
     return notes
 
 
-def main() -> None:
-    engine = SemanticEngine()
-    evaluation_path = IMPORTED_GOLDEN_PATH if engine.corpus_version.startswith("import-") else GOLDEN_PATH
-    golden = _load_golden(evaluation_path)
+def run_evaluation(
+    engine: SemanticEngine,
+    golden: list[dict[str, Any]],
+    evaluation_path: Path,
+) -> dict[str, Any]:
+    validate_qrel_case_ids(golden, set(engine._cases))
     filters = SearchFilters()
     metric_names = [
         "judgedPrecision@5",
@@ -295,26 +438,72 @@ def main() -> None:
         "pairwisePreferenceCoverage@10",
         "explicitContradictionRateAmongJudged@5",
         "explicitContradictionQueryHit@5",
+        "sourceLinkCoverage@10",
+        "evidenceLocatorCoverage@10",
     ]
     summary: dict[str, dict[str, Any]] = {}
     diagnostics: dict[str, list[dict[str, Any]]] = {}
 
-    for mode in ("dense", "lexical", "hybrid"):
+    modes = ("dense", "lexical", "hybridRrf", "hybridReranked")
+    for mode in modes:
         collected: dict[str, list[float | int | None]] = {name: [] for name in metric_names}
+        latencies_ms: list[float] = []
         mode_diagnostics: list[dict[str, Any]] = []
         for item in golden:
+            chunk_by_case: dict[str, str] = {}
+            result_locator_case_ids: set[str] | None = None
+            started = time.perf_counter()
             if mode == "dense":
-                chunks = [result.chunk_id for result in engine._dense(item["query"], filters)]
-                ranked = unique_case_ids(engine, chunks)
+                ranked_chunks = engine._dense(item["query"], filters)
+                ranked, chunk_by_case = _branch_case_ranking(engine, ranked_chunks)
             elif mode == "lexical":
-                chunks = [result.chunk_id for result in engine._lexical(item["query"], filters)]
-                ranked = unique_case_ids(engine, chunks)
+                ranked_chunks = engine._lexical(item["query"], filters)
+                ranked, chunk_by_case = _branch_case_ranking(engine, ranked_chunks)
+            elif mode == "hybridRrf":
+                dense_chunks = engine._dense(item["query"], filters)
+                lexical_chunks = engine._lexical(item["query"], filters)
+                dense_ranked, dense_chunk_by_case = _branch_case_ranking(engine, dense_chunks)
+                lexical_ranked, lexical_chunk_by_case = _branch_case_ranking(
+                    engine, lexical_chunks
+                )
+                ranked = rrf_fuse_case_rankings(
+                    dense_ranked, lexical_ranked, k=RRF_K
+                )
+                chunk_by_case = {
+                    case_id: dense_chunk_by_case.get(case_id)
+                    or lexical_chunk_by_case[case_id]
+                    for case_id in ranked
+                }
             else:
-                ranked = [result.id for result in engine.search(item["query"], filters, 10).results]
+                response = engine.search(item["query"], filters, 10)
+                ranked = [result.id for result in response.results]
+                result_locator_case_ids = {
+                    result.id
+                    for result in response.results
+                    if result.matchedEvidence.strip()
+                    and result.evidenceLocator.section.strip()
+                    and result.evidenceLocator.paragraph.strip()
+                }
+            latency_ms = (time.perf_counter() - started) * 1_000
+            latencies_ms.append(latency_ms)
 
             scores = evaluate_ranking(ranked, item)
+            source_coverage = coverage_at(
+                ranked, _source_available_case_ids(engine, ranked)
+            )
+            locator_case_ids = (
+                result_locator_case_ids
+                if result_locator_case_ids is not None
+                else _chunk_locator_available_case_ids(engine, chunk_by_case)
+            )
+            evidence_coverage = coverage_at(ranked, locator_case_ids)
+            query_metrics = {
+                **scores,
+                "sourceLinkCoverage@10": source_coverage,
+                "evidenceLocatorCoverage@10": evidence_coverage,
+            }
             for name in metric_names:
-                collected[name].append(scores[name])
+                collected[name].append(query_metrics[name])
             labels = _normalise_labels(item)
             labels_at_top = []
             for case_id in ranked[:5]:
@@ -334,7 +523,8 @@ def main() -> None:
                     "labelsAtTop5": labels_at_top,
                     "judgedResults@5": scores["judgedResults@5"],
                     "unjudgedResults@5": scores["unjudgedResults@5"],
-                    "metrics": {name: scores[name] for name in metric_names},
+                    "latencyMs": round(latency_ms, 3),
+                    "metrics": {name: query_metrics[name] for name in metric_names},
                 }
             )
 
@@ -345,23 +535,64 @@ def main() -> None:
             mode_summary[name] = value
             observations[name] = count
         mode_summary["metricObservations"] = observations
+        mode_summary["latencyMs"] = {
+            "p50": percentile(latencies_ms, 0.50),
+            "p95": percentile(latencies_ms, 0.95),
+            "observations": len(latencies_ms),
+        }
         summary[mode] = mode_summary
         diagnostics[mode] = mode_diagnostics
 
     label_summary = _label_summary(golden)
-    print(
-        json.dumps(
-            {
-                "corpusVersion": engine.corpus_version,
-                "evaluationSet": evaluation_path.name,
-                "labelSummary": label_summary,
-                "metrics": summary,
-                "topResultDiagnostics": diagnostics,
-                "limitations": _limitations(label_summary),
-            },
-            indent=2,
-        )
+    return {
+        "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "gitRevision": _git_revision(),
+        "corpusVersion": engine.corpus_version,
+        "modelVersion": engine.model_version,
+        "indexVersion": {
+            "schema": INDEX_SCHEMA_VERSION,
+            "vectorSelector": VECTOR_SELECTOR_VERSION,
+            "lexicalSelector": LEXICAL_SELECTOR_VERSION,
+            "rrfK": RRF_K,
+        },
+        "evaluationSet": evaluation_path.name,
+        "systems": {
+            "dense": "Two-vector case-level dense branch",
+            "lexical": "Role-aware case-level SQLite FTS5 branch",
+            "hybridRrf": "Plain case-level reciprocal-rank fusion of dense and lexical branches",
+            "hybridReranked": "Production hybrid with legal-context, contradiction and authority reranking",
+        },
+        "labelSummary": label_summary,
+        "metrics": summary,
+        "topResultDiagnostics": diagnostics,
+        "limitations": _limitations(label_summary),
+    }
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Evaluate dense, lexical, plain-RRF and reranked retrieval systems."
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Optionally persist the JSON report to this path; JSON is still printed to stdout.",
+    )
+    args = parser.parse_args(argv)
+
+    engine = SemanticEngine()
+    evaluation_path = (
+        IMPORTED_GOLDEN_PATH
+        if engine.corpus_version.startswith("import-")
+        else GOLDEN_PATH
+    )
+    golden = _load_golden(evaluation_path)
+    report = run_evaluation(engine, golden, evaluation_path)
+    if args.output is not None:
+        rendered = persist_json_report(report, args.output.resolve())
+    else:
+        rendered = json.dumps(report, indent=2)
+    print(rendered)
 
 
 if __name__ == "__main__":

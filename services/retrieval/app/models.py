@@ -1,8 +1,30 @@
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
+
+
+LEGAL_CITATION_QUERY = re.compile(
+    r"(?:\bAIR\s+(?:19|20)\d{2}\s+[A-Z]{1,12}\s+\d+\b|"
+    r"\(?\b(?:19|20)\d{2}\)?\s+(?:\d+\s+)?(?:"
+    r"SCC(?:\s+ON(?:LINE|L))?(?:\s+[A-Z]{1,12})?|SCR|INSC|Cri\.?\s*L\.?\s*J\.?)"
+    r"\s+\d+\b)",
+    re.IGNORECASE,
+)
+LEGAL_CASE_TITLE_QUERY = re.compile(
+    r"\b[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\s+"
+    r"(?:v\.?|vs\.?|versus)\s+"
+    r"[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\b",
+    re.IGNORECASE,
+)
+
+
+def is_exact_legal_lookup(value: str) -> bool:
+    """Allow concise citation/title lookup without weakening fact-query quality."""
+
+    return bool(LEGAL_CITATION_QUERY.search(value) or LEGAL_CASE_TITLE_QUERY.search(value))
 
 
 class SearchFilters(BaseModel):
@@ -79,7 +101,7 @@ class SearchFilters(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(min_length=20, max_length=4000)
+    query: str = Field(min_length=5, max_length=4000)
     filters: SearchFilters = Field(default_factory=SearchFilters)
     top_k: int = Field(default=10, alias="topK", ge=1, le=20)
 
@@ -89,8 +111,13 @@ class SearchRequest(BaseModel):
     @classmethod
     def normalize_query(cls, value: str) -> str:
         cleaned = " ".join(value.split())
-        if len(cleaned.split()) < 4:
-            raise ValueError("Describe at least four meaningful words")
+        if not is_exact_legal_lookup(cleaned) and (
+            len(cleaned) < 20 or len(cleaned.split()) < 4
+        ):
+            raise ValueError(
+                "Enter a recognized case title/citation, or describe at least four meaningful "
+                "words and 20 characters"
+            )
         return cleaned
 
 

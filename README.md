@@ -2,7 +2,7 @@
 
 A sober, source-linked precedent retrieval prototype for lawyers and judicial researchers. It combines local semantic embeddings with SQLite full-text search, then fuses both rankings with reciprocal-rank fusion (RRF). Search runs without a paid API or API key.
 
-This remains a research prototype, not a comprehensive legal database or legal-advice system. When generated import data is present, the current local corpus contains 4,609 Supreme Court and High Court judgments split into 151,653 source-located passages. Otherwise, the service falls back to five bundled demonstration decisions. Every result opens either the exact source URL extracted from the PDF or the local source PDF for human verification.
+This remains a research prototype, not a comprehensive legal database or legal-advice system. When generated import data is present, the current local corpus contains 4,609 Supreme Court and High Court judgments split into 165,177 source-located passages. Otherwise, the service falls back to five bundled demonstration decisions. Every result opens either the exact source URL extracted from the PDF or the local source PDF for human verification.
 
 ## Retrieval flow
 
@@ -20,10 +20,10 @@ After cloning the repository, install the frontend and start the application:
 
 ```powershell
 npm install
-npm run dev:all
+npm run dev
 ```
 
-On the first run, `dev:all` invokes the setup automatically. It downloads the checksum-verified `retrieval-corpus-v2` GitHub release bundle, creates the Python environment, installs pinned dependencies and downloads the public embedding model. Existing local indexes are checked against the manifest's case, passage, vector and schema versions and are replaced when stale. For a private repository, authenticate GitHub CLI with `gh auth login` or provide `GH_TOKEN` first.
+On the first run, `npm run dev` invokes the setup automatically, then starts both the retrieval service and website on matching configured ports. It downloads the checksum-verified `retrieval-corpus-v2` GitHub release bundle, creates the Python environment, installs pinned dependencies and downloads the public embedding model. Existing local indexes are checked against the manifest's case, passage, vector and schema versions and are replaced when stale. For a private repository, authenticate GitHub CLI with `gh auth login` or provide `GH_TOKEN` first. `npm run dev:all` remains an alias for the same combined startup flow.
 
 The setup can also be run separately:
 
@@ -81,10 +81,10 @@ npm run typecheck
 npm run lint
 npm run build
 services/retrieval/.venv/Scripts/python.exe -m unittest discover -s services/retrieval/tests -v
-services/retrieval/.venv/Scripts/python.exe services/retrieval/evaluate.py
+services/retrieval/.venv/Scripts/python.exe services/retrieval/evaluate.py --output "$env:TEMP/nyayalens-evaluation.json"
 ```
 
-The bundled evaluation in `services/retrieval/evaluation/golden_queries.json` applies to the five demonstration decisions. When the imported corpus is active, the command uses `import_regression_queries.json` instead. The report treats unreviewed results as unknown, reports judged coverage with its metrics and supports explicit contradiction labels. The current small set catches regressions; it is not a substitute for 30–50 independently lawyer-reviewed queries across legal domains.
+The bundled evaluation in `services/retrieval/evaluation/golden_queries.json` applies to the five demonstration decisions. When the imported corpus is active, the command uses `import_regression_queries.json` instead. The report separately compares dense, lexical, plain hybrid RRF and reranked hybrid retrieval; treats unreviewed results as unknown; reports judged coverage, latency and structural provenance coverage; and supports explicit contradiction labels. Its incomplete-qrel diagnostics are not exhaustive Precision@K or standard fully judged nDCG@K. The current small set catches regressions; it is not a substitute for 30–50 independently lawyer-reviewed queries across legal domains.
 
 ## Configuration and security
 

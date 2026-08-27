@@ -80,7 +80,7 @@ In another terminal, run `npm run dev`. The TanStack server proxies validated se
 
 ```powershell
 services/retrieval/.venv/Scripts/python -m unittest discover -s services/retrieval/tests -v
-services/retrieval/.venv/Scripts/python services/retrieval/evaluate.py
+services/retrieval/.venv/Scripts/python services/retrieval/evaluate.py --output "$env:TEMP/nyayalens-evaluation.json"
 ```
 
-Rankings are retrieval outputs, not legal-accuracy probabilities. Every result must be verified against its linked judgment. Rows marked `review_required` in the QA report remain searchable when their judgment text is sound, but their incomplete metadata should be reviewed before institutional use.
+The evaluator separately names dense-only, lexical-only, plain hybrid RRF and production reranked-hybrid results. Sparse labels produce judged-only diagnostics with coverage, not exhaustive Precision@K or standard fully judged nDCG@K. Rankings are retrieval outputs, not legal-accuracy probabilities. Every result must be verified against its linked judgment. Rows marked `review_required` in the QA report remain searchable when their judgment text is sound, but their incomplete metadata should be reviewed before institutional use.

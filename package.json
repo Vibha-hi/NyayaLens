@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "python scripts/run_dev.py",
+    "dev:web": "vite dev",
     "retrieval:bootstrap": "python services/retrieval/bootstrap_model.py",
     "retrieval:ingest": "python services/retrieval/ingest.py",
     "setup:retrieval": "python scripts/setup_retrieval.py",

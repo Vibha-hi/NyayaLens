@@ -20,6 +20,11 @@ def _synthetic_engine(case_specs: dict[str, list[tuple[str, str]]]) -> SemanticE
     engine._cases = {}
     engine._chunks = {}
     engine._chunks_by_case = defaultdict(list)
+    engine._chunk_positions = {}
+    engine._context_anchor_cache = {}
+    engine._citation_context_cache = {}
+    engine._primary_profile_cache = {}
+    engine._case_issue_cache = {}
     for case_id, chunks in case_specs.items():
         engine._cases[case_id] = {
             "id": case_id,
@@ -40,6 +45,7 @@ def _synthetic_engine(case_specs: dict[str, list[tuple[str, str]]]) -> SemanticE
                 "section": section,
                 "evidence": evidence,
             }
+            engine._chunk_positions[chunk_id] = index
             engine._chunks_by_case[case_id].append(chunk_id)
     return engine
 
@@ -192,8 +198,155 @@ class PassageRoleRegressionTests(unittest.TestCase):
         self.assertLess(citation_score, reasoning_score)
         self.assertIn("cited authorities", citation_reason.lower())
 
+    def test_quote_context_continues_into_following_passages(self) -> None:
+        engine = _synthetic_engine(
+            {
+                "quoted-run": [
+                    (
+                        "judgment passage",
+                        "The material facts concern a securities appeal against an order of SEBI.",
+                    ),
+                    (
+                        "judgment passage",
+                        "Learned counsel placed reliance on Alpha v. State, (2020) 1 SCC 1. "
+                        "The earlier Court held as under:",
+                    ),
+                    (
+                        "judgment passage",
+                        "The landlord sought eviction of the tenant before the Rent Controller.",
+                    ),
+                    (
+                        "judgment passage",
+                        "Returning to the present case, we hold that the securities appeal succeeds.",
+                    ),
+                    (
+                        "operative order",
+                        "Accordingly, the appeal is allowed and the SEBI order is set aside.",
+                    ),
+                ]
+            }
+        )
+        chunk_ids = engine._chunks_by_case["quoted-run"]
+
+        self.assertIn(
+            chunk_ids[2],
+            engine._citation_context_chunks("quoted-run", chunk_ids[2]),
+        )
+        self.assertNotIn(
+            chunk_ids[3],
+            engine._citation_context_chunks("quoted-run", chunk_ids[3]),
+        )
+        self.assertIn(chunk_ids[2], engine._citation_context_chunks("quoted-run"))
+        self.assertNotIn(chunk_ids[3], engine._citation_context_chunks("quoted-run"))
+        facts_id, decision_id, _ = engine._context_anchors_for_case("quoted-run")
+        self.assertEqual(facts_id, chunk_ids[0])
+        self.assertEqual(decision_id, chunk_ids[3])
+
+    def test_bare_digit_in_citation_is_not_an_explicit_section_match(self) -> None:
+        engine = _synthetic_engine(
+            {
+                "citation-only": [
+                    (
+                        "judgment passage",
+                        "The dispute concerns an unrelated administrative appointment.",
+                    )
+                ],
+                "explicit-section": [
+                    (
+                        "judgment passage",
+                        "Section 8 governs the devolution of the estate.",
+                    )
+                ],
+            }
+        )
+        engine._cases["citation-only"]["citation"] = "2024 INSC 438"
+        profile = analyze_legal_query("Apply Section 8")
+        citation_score = engine._passage_relevance_score(
+            engine._chunks_by_case["citation-only"][0],
+            "Apply Section 8",
+            profile,
+        )
+        explicit_score = engine._passage_relevance_score(
+            engine._chunks_by_case["explicit-section"][0],
+            "Apply Section 8",
+            profile,
+        )
+
+        self.assertEqual(citation_score, 0.0)
+        self.assertGreaterEqual(explicit_score, 6.0)
+
+    def test_primary_issue_context_excludes_noisy_legacy_labels(self) -> None:
+        engine = _synthetic_engine(
+            {
+                "criminal": [
+                    (
+                        "material facts",
+                        "The accused seeks quashing of the FIR under Section 482 after investigation.",
+                    )
+                ],
+                "legacy-only": [
+                    (
+                        "judgment passage",
+                        "The proceeding raises a question that requires adjudication.",
+                    )
+                ],
+            }
+        )
+        engine._cases["criminal"]["legalIssues"] = ["Arbitration"]
+        engine._cases["legacy-only"]["legalIssues"] = ["Taxation"]
+
+        criminal_labels = engine._case_issue_labels("criminal")
+        legacy_labels = engine._case_issue_labels("legacy-only")
+
+        self.assertNotIn("Arbitration", criminal_labels)
+        self.assertIn("Quashing", criminal_labels)
+        self.assertIn("Quashing of Criminal Proceedings", criminal_labels)
+        self.assertIn("Criminal Law", criminal_labels)
+        self.assertEqual(legacy_labels, ("Unclassified",))
+
 
 class LegalRerankingRegressionTests(unittest.TestCase):
+    def test_primary_controlling_statute_and_domain_break_close_ties(self) -> None:
+        evidence = (
+            "Two brothers claim equal shares in their Hindu father's immovable property "
+            "under the Hindu Succession Act after his intestate death."
+        )
+        engine = _synthetic_engine(
+            {
+                "succession-primary": [("court reasoning", evidence)],
+                "property-primary": [("court reasoning", evidence)],
+            }
+        )
+        engine._cases["succession-primary"]["controllingStatutes"] = [
+            "Hindu Succession Act, 1956",
+            "Registration Act, 1908",
+        ]
+        engine._cases["succession-primary"]["controllingLegalDomains"] = [
+            "Succession / Inheritance",
+            "Property / Land",
+        ]
+        engine._cases["property-primary"]["controllingStatutes"] = [
+            "Registration Act, 1908",
+            "Hindu Succession Act, 1956",
+        ]
+        engine._cases["property-primary"]["controllingLegalDomains"] = [
+            "Property / Land",
+            "Succession / Inheritance",
+        ]
+        query = (
+            "Two brothers claim equal shares under the Hindu Succession Act in property "
+            "left by their father after his intestate death."
+        )
+
+        primary_score, primary_reasons, _, _ = _score(
+            engine, "succession-primary", query
+        )
+        secondary_score, _, _, _ = _score(engine, "property-primary", query)
+
+        self.assertGreater(primary_score, secondary_score)
+        self.assertTrue(any("primary controlling statute" in reason for reason in primary_reasons))
+        self.assertTrue(any("primary controlling domain" in reason for reason in primary_reasons))
+
     def test_same_personal_law_and_succession_facts_beat_conflicting_regime(self) -> None:
         engine = _synthetic_engine(
             {

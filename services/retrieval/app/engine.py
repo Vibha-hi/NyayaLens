@@ -9,6 +9,7 @@ import sqlite3
 import time
 import uuid
 from collections import defaultdict
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -30,6 +31,7 @@ from .legal_query import (
     LegalQueryProfile,
     analyze_legal_query,
     expansion_terms,
+    extract_sections,
     profile_signals,
 )
 from .models import EvidenceLocator, SearchFilters, SearchResponse, SearchResult
@@ -47,6 +49,7 @@ RRF_K = 60
 INDEX_SCHEMA_VERSION = "4"
 VECTOR_SELECTOR_VERSION = "facts-decision-v3"
 LEXICAL_SELECTOR_VERSION = "source-passages-v2"
+INDEX_REBUILD_LOCK_TIMEOUT_MS = 3_600_000
 try:
     INDEX_WORKERS = max(1, min(2, int(os.getenv("RETRIEVAL_INDEX_WORKERS", "1"))))
 except ValueError:
@@ -83,12 +86,28 @@ LEGAL_DOMAIN_TERMS = {
     "respondent", "section", "sentence", "statute", "tax", "tenant", "tribunal", "writ",
 }
 
+LEGAL_CITATION_PATTERN = re.compile(
+    r"(?:\bAIR\s+(?:19|20)\d{2}\s+[A-Z]{1,12}\s+\d+\b|"
+    r"\(?\b(?:19|20)\d{2}\)?\s+(?:\d+\s+)?(?:"
+    r"SCC(?:\s+ON(?:LINE|L))?(?:\s+[A-Z]{1,12})?|SCR|INSC|Cri\.?\s*L\.?\s*J\.?)"
+    r"\s+\d+\b)",
+    re.IGNORECASE,
+)
+LEGAL_CASE_TITLE_PATTERN = re.compile(
+    r"\b[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\s+"
+    r"(?:v\.?|vs\.?|versus)\s+"
+    r"[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\b",
+    re.IGNORECASE,
+)
+
 
 def is_legal_query(text: str) -> bool:
     tokens = set(re.findall(r"[a-z]+", text.lower()))
     profile = analyze_legal_query(text)
     return bool(
         tokens & LEGAL_DOMAIN_TERMS
+        or LEGAL_CITATION_PATTERN.search(text)
+        or LEGAL_CASE_TITLE_PATTERN.search(text)
         or profile.concepts
         or profile.domains
         or profile.statutes
@@ -126,6 +145,7 @@ class SemanticEngine:
             self._chunks_by_case[case_id].append(chunk_id)
         self._disposition_cache: dict[str, tuple[str, str, str, str, str, str]] = {}
         self._context_anchor_cache: dict[str, tuple[str, str, str]] = {}
+        self._citation_context_cache: dict[str, set[str]] = {}
         self._primary_profile_cache: dict[str, LegalQueryProfile] = {}
         self._case_issue_cache: dict[str, tuple[str, ...]] = {}
         self._ensure_index()
@@ -148,7 +168,7 @@ class SemanticEngine:
         return len(self._chunks)
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(DB_PATH)
+        connection = sqlite3.connect(DB_PATH, timeout=30)
         connection.row_factory = sqlite3.Row
         return connection
 
@@ -273,7 +293,16 @@ class SemanticEngine:
         )
 
         citation_penalty = min(12.0, citation_hits * 1.1 + cited_case_hits * 1.4 + quotation_hits * 2.2)
-        common_penalty = header_hits * 5.0 + submission_hits * 4.0 + citation_penalty
+        in_cross_chunk_quote = (
+            section not in {"material facts", "court reasoning", "operative order"}
+            and chunk_id in self._citation_context_chunks(case_id)
+        )
+        common_penalty = (
+            header_hits * 5.0
+            + submission_hits * 4.0
+            + citation_penalty
+            + (14.0 if in_cross_chunk_quote else 0.0)
+        )
         facts_score = (
             fact_hits * 5.0
             + (2.0 if progress <= 0.45 else 0.0)
@@ -288,7 +317,13 @@ class SemanticEngine:
             + order_hits * 1.5
             - common_penalty
         )
-        order_score = order_hits * 8.0 + progress * 3.0 - header_hits * 4.0 - submission_hits * 2.0
+        order_score = (
+            order_hits * 8.0
+            + progress * 3.0
+            - header_hits * 4.0
+            - submission_hits * 2.0
+            - (8.0 if in_cross_chunk_quote else 0.0)
+        )
 
         if section == "material facts":
             facts_score += 9.0
@@ -304,6 +339,90 @@ class SemanticEngine:
             facts_score -= 14.0
             decision_score -= 14.0
         return facts_score, decision_score, order_score
+
+    def _citation_context_chunks(
+        self, case_id: str, target_chunk_id: str | None = None
+    ) -> set[str]:
+        """Identify quoted-authority runs that continue across passage boundaries.
+
+        Older imported judgments have generic passage labels and often split a
+        quoted precedent several passages after its citation lead-in. A small,
+        bounded state machine carries that context forward until a quotation
+        close or a strong return-to-current-case marker is found.
+        """
+
+        if not hasattr(self, "_citation_context_cache"):
+            self._citation_context_cache = {}
+        cached = self._citation_context_cache.get(case_id)
+        if cached is not None:
+            return cached
+
+        quote_chunks: set[str] = set()
+        continuation = 0
+        chunk_ids = self._chunks_by_case[case_id]
+        if target_chunk_id is None:
+            scan_chunk_ids = chunk_ids
+        else:
+            position = self._chunk_positions[target_chunk_id]
+            # The longest continuation assigned below is six passages. A
+            # bounded look-behind therefore gives the same answer for a single
+            # retrieved passage without scanning a whole judgment.
+            scan_chunk_ids = chunk_ids[max(0, position - 6) : position + 1]
+        for chunk_id in scan_chunk_ids:
+            chunk = self._chunks[chunk_id]
+            text = re.sub(r"\s+", " ", str(chunk["evidence"]).lower())
+            section = str(chunk.get("section", "")).lower()
+            direct_quote_start = bool(
+                re.search(
+                    r"\b(?:held|observed|stated|reproduced|quoted|reads?)\s+"
+                    r"(?:as\s+)?(?:under|below|follows)\b|"
+                    r"\bquoted\s+hereinbelow\b",
+                    text,
+                )
+            )
+            reliance_start = bool(
+                re.search(
+                    r"\b(?:placed\s+reliance|relied\s+(?:up)?on|relying\s+(?:on|upon)|"
+                    r"in\s+the\s+case\s+of|above\s+cited\s+judgment)\b",
+                    text,
+                )
+                and (
+                    LEGAL_CITATION_PATTERN.search(text)
+                    or LEGAL_CASE_TITLE_PATTERN.search(text)
+                )
+            )
+            return_to_current_case = bool(
+                re.search(
+                    r"\b(?:reverting|returning|coming\s+back)\s+to\s+(?:the\s+)?"
+                    r"(?:present|instant)\s+(?:case|appeal|petition)\b|"
+                    r"\bwe\s+(?:shall|now)\s+(?:consider|examine|turn\s+to)\b|"
+                    r"\bhaving\s+considered\s+the\s+(?:rival\s+)?submissions\b",
+                    text,
+                )
+            )
+
+            if return_to_current_case and not direct_quote_start:
+                continuation = 0
+            if section == "cited authorities":
+                continuation = max(continuation, 2)
+            if reliance_start:
+                continuation = max(continuation, 3)
+            if direct_quote_start:
+                continuation = max(continuation, 6)
+
+            if continuation > 0:
+                quote_chunks.add(chunk_id)
+                continuation -= 1
+
+            if re.search(
+                r"\((?:emphasis\s+(?:supplied|added|is\s+ours)|underlining\s+ours)\)",
+                text,
+            ):
+                continuation = 0
+
+        if target_chunk_id is None:
+            self._citation_context_cache[case_id] = quote_chunks
+        return quote_chunks
 
     def _context_anchors_for_case(self, case_id: str) -> tuple[str, str, str]:
         if not hasattr(self, "_context_anchor_cache"):
@@ -399,21 +518,31 @@ class SemanticEngine:
         return decision[1], decision[3]
 
     def _ensure_index(self) -> None:
-        with self._connect() as db:
+        with closing(self._connect()) as db, db:
+            # BEGIN IMMEDIATE is the cross-process rebuild lock. A second service
+            # process waits for the active builder, then evaluates all freshness
+            # metadata after that builder has committed instead of acting on a
+            # stale pre-lock snapshot.
+            db.execute(f"PRAGMA busy_timeout = {INDEX_REBUILD_LOCK_TIMEOUT_MS}")
+            db.execute("BEGIN IMMEDIATE")
             db.execute("CREATE TABLE IF NOT EXISTS index_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
-            db.executescript(
+            db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS chunks (
                     chunk_id TEXT PRIMARY KEY,
                     case_id TEXT NOT NULL,
                     index_text TEXT NOT NULL
-                );
+                )
+                """
+            )
+            db.execute(
+                """
                 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
                     chunk_id UNINDEXED,
                     case_id UNINDEXED,
                     index_text,
                     tokenize='porter unicode61'
-                );
+                )
                 """
             )
             embedding_columns = {
@@ -426,7 +555,7 @@ class SemanticEngine:
             }
             if embedding_columns != required_embedding_columns:
                 db.execute("DROP TABLE IF EXISTS case_embeddings")
-            db.executescript(
+            db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS case_embeddings (
                     embedding_id TEXT PRIMARY KEY,
@@ -435,9 +564,13 @@ class SemanticEngine:
                     embedding_kind TEXT NOT NULL,
                     source_chunk_ids_json TEXT NOT NULL,
                     embedding BLOB NOT NULL
-                );
+                )
+                """
+            )
+            db.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_case_embeddings_case_id
-                    ON case_embeddings(case_id);
+                    ON case_embeddings(case_id)
                 """
             )
             schema = db.execute("SELECT value FROM index_meta WHERE key='schema_version'").fetchone()
@@ -581,7 +714,7 @@ class SemanticEngine:
             )
 
     def _load_vectors(self) -> None:
-        with self._connect() as db:
+        with closing(self._connect()) as db, db:
             rows = db.execute(
                 """
                 SELECT case_id, representative_chunk_id, embedding_kind,
@@ -643,12 +776,60 @@ class SemanticEngine:
             return cached
         case = self._cases[case_id]
         primary = self._case_primary_profile(case_id)
-        candidates = [
-            *(str(item) for item in (case.get("controllingLegalDomains") or [])),
+        controlling_domain_values = [
+            str(item) for item in (case.get("controllingLegalDomains") or [])
+        ]
+        primary_domains = set(primary.domains) | set(controlling_domain_values)
+        primary_candidates = [
+            *controlling_domain_values,
             *primary.domains,
             *primary.concepts,
-            *(str(item) for item in (case.get("legalIssues") or [])),
         ]
+        controlling_reliefs = {
+            str(item) for item in (case.get("controllingReliefs") or [])
+        }
+        primary_reliefs = set(primary.reliefs) | controlling_reliefs
+        if {
+            "Bail / Criminal Procedure",
+            "Criminal Substantive Law",
+        } & primary_domains:
+            primary_candidates.append("Criminal Law")
+        if (
+            "Bail / Criminal Procedure" in primary_domains
+            and "Bail" in primary_reliefs
+            and not {"Anticipatory Bail", "Default Bail"} & set(primary.concepts)
+        ):
+            primary_candidates.append("Regular Bail")
+        if "Quashing" in primary.concepts:
+            primary_candidates.append("Quashing of Criminal Proceedings")
+            primary_candidates.append("Criminal Law")
+        if "Economic Offence" in primary.concepts:
+            primary_candidates.append("Economic Offences / PMLA")
+        controlling_statutes = {
+            str(item) for item in (case.get("controllingStatutes") or [])
+        }
+        primary_statutes = set(primary.statutes) | controlling_statutes
+        if "Prevention of Money Laundering Act, 2002" in primary_statutes:
+            primary_candidates.append("Economic Offences / PMLA")
+        if "Narcotic Drugs and Psychotropic Substances Act, 1985" in primary_statutes:
+            primary_candidates.append("Narcotics / NDPS")
+        primary_facts = dict(primary.facts)
+        for item in case.get("controllingMaterialFacts", []):
+            if isinstance(item, dict) and item.get("name") and item.get("value"):
+                primary_facts.setdefault(str(item["name"]), str(item["value"]))
+        if "flight_risk" in primary_facts:
+            primary_candidates.append("Flight Risk")
+        if "witness_interference" in primary_facts:
+            primary_candidates.append("Witness Interference")
+        primary_candidates = [
+            item
+            for item in dict.fromkeys(primary_candidates)
+            if item and item != "Unclassified"
+        ]
+        # Whole-document legacy labels frequently came from cited authorities
+        # and are never safe as advanced-filter evidence. Cases whose primary
+        # context cannot be classified remain explicitly Unclassified.
+        candidates = primary_candidates
         labels = tuple(dict.fromkeys(item for item in candidates if item and item != "Unclassified"))
         if not labels:
             labels = ("Unclassified",)
@@ -726,9 +907,9 @@ class SemanticEngine:
             aliases = lexical_tokens(statute)
             if aliases and all(token in haystack_tokens for token in aliases[:3]):
                 score += 7.0
+        explicit_sections = set(extract_sections(haystack)) if profile.sections else set()
         for section in profile.sections:
-            compact = section.lower().replace("section ", "")
-            if section.lower() in haystack or compact in haystack:
+            if section in explicit_sections:
                 score += 6.0
         case_id = str(self._chunks[chunk_id]["case_id"])
         role_adjustment, role_reason = self._passage_role_adjustment(case_id, chunk_id, profile)
@@ -756,7 +937,7 @@ class SemanticEngine:
         if not tokens:
             return []
         fts_query = " OR ".join(f'"{token}"' for token in tokens[:45])
-        with self._connect() as db:
+        with closing(self._connect()) as db, db:
             rows = db.execute(
                 """
                 SELECT chunk_id, case_id, bm25(chunks_fts) AS score
@@ -765,27 +946,41 @@ class SemanticEngine:
                 ORDER BY score ASC
                 LIMIT ?
                 """,
-                (fts_query, max(limit * 20, 2_000)),
+                (fts_query, max(limit * 12, 1_200)),
             ).fetchall()
         profile = analyze_legal_query(query)
         expanded_phrases = expansion_terms(profile)
-        best_by_case: dict[str, tuple[float, sqlite3.Row]] = {}
+        # BM25 can return thousands of passages from the same few long
+        # judgments. First retain only their strongest passages and enough
+        # distinct judgments for recall, then run the more expensive legal-role
+        # analysis. This keeps long documents from consuming the latency budget.
+        shortlisted: dict[str, list[sqlite3.Row]] = defaultdict(list)
+        distinct_case_target = max(limit + 60, int(limit * 1.5))
         for row in rows:
             case_id = row["case_id"]
             if not self._case_allowed(case_id, filters):
                 continue
-            raw_relevance = max(0.0, -float(row["score"]))
-            passage_relevance = self._passage_relevance_score(
-                row["chunk_id"],
-                query,
-                profile,
-                query_tokens=tokens,
-                expanded_phrases=expanded_phrases,
-            )
-            combined = raw_relevance + passage_relevance * 0.35
-            current = best_by_case.get(case_id)
-            if current is None or combined > current[0]:
-                best_by_case[case_id] = (combined, row)
+            bucket = shortlisted[case_id]
+            if len(bucket) < 3:
+                bucket.append(row)
+            if len(shortlisted) >= distinct_case_target:
+                break
+
+        best_by_case: dict[str, tuple[float, sqlite3.Row]] = {}
+        for case_id, case_rows in shortlisted.items():
+            for row in case_rows:
+                raw_relevance = max(0.0, -float(row["score"]))
+                passage_relevance = self._passage_relevance_score(
+                    row["chunk_id"],
+                    query,
+                    profile,
+                    query_tokens=tokens,
+                    expanded_phrases=expanded_phrases,
+                )
+                combined = raw_relevance + passage_relevance * 0.35
+                current = best_by_case.get(case_id)
+                if current is None or combined > current[0]:
+                    best_by_case[case_id] = (combined, row)
 
         ordered_cases = sorted(
             best_by_case.items(), key=lambda item: (-item[1][0], item[0])
@@ -910,11 +1105,22 @@ class SemanticEngine:
             )
         )
 
-        if section == "operative order" or (near_end and any(marker in text for marker in order_markers)):
+        # Structured roles already settle these cases, so avoid scanning every
+        # passage in the judgment merely to rediscover the same role.
+        if section == "operative order":
             adjustment = 0.003 if query_profile.reliefs or query_profile.postures else 0.0015
             return adjustment, "Matched passage is the current court's operative order"
         if section == "party submissions":
             return -0.003, "Matched passage is primarily a party submission"
+        if (
+            section not in {"material facts", "court reasoning", "cited authorities"}
+            and chunk_id in self._citation_context_chunks(case_id, chunk_id)
+        ):
+            return -0.004, "Matched passage mainly discusses cited authorities across passage boundaries"
+
+        if near_end and any(marker in text for marker in order_markers):
+            adjustment = 0.003 if query_profile.reliefs or query_profile.postures else 0.0015
+            return adjustment, "Matched passage is the current court's operative order"
         if (
             section == "cited authorities"
             or (citation_density >= 2 and cited_case_density >= 1)
@@ -969,18 +1175,16 @@ class SemanticEngine:
             )
         )
         candidate_profile = analyze_legal_query(candidate_text, infer_intent=False)
-        selected_passage_profile = analyze_legal_query(
-            str(self._chunks[chunk_id]["evidence"]), infer_intent=False
-        )
         primary_profile = self._case_primary_profile(case_id)
         score = 0.0
         reasons: list[str] = []
         core_matches = 0
         contradictions = 0
 
-        stored_statutes = {
+        stored_statute_order = [
             str(item) for item in case.get("controllingStatutes", [])
-        }
+        ]
+        stored_statutes = set(stored_statute_order)
         central_statutes = set(primary_profile.statutes) | stored_statutes
         mentioned_statutes = {
             str(item) for item in case.get("statutes", [])
@@ -994,6 +1198,13 @@ class SemanticEngine:
             score += min(0.010, len(shared_central_statutes) * 0.007)
             core_matches += len(shared_central_statutes)
             reasons.append("Same controlling statute: " + ", ".join(shared_central_statutes[:2]))
+            if (
+                query_profile.statutes
+                and stored_statute_order
+                and query_profile.statutes[0] == stored_statute_order[0]
+            ):
+                score += 0.002
+                reasons.append("Query statute is the judgment's primary controlling statute")
         if shared_passage_statutes:
             score += min(0.002, len(shared_passage_statutes) * 0.001)
             reasons.append(
@@ -1044,9 +1255,10 @@ class SemanticEngine:
                 contradictions += 1
                 reasons.append("Same section number appears under a different statute")
 
-        stored_domains = {
+        stored_domain_order = [
             str(item) for item in case.get("controllingLegalDomains", [])
-        }
+        ]
+        stored_domains = set(stored_domain_order)
         primary_domains = set(primary_profile.domains) | stored_domains
         shared_primary_domains = sorted(set(query_profile.domains) & primary_domains)
         mentioned_domains = set(candidate_profile.domains) - primary_domains
@@ -1058,6 +1270,13 @@ class SemanticEngine:
                 "Current proceeding has the same domain: "
                 + ", ".join(shared_primary_domains[:2])
             )
+            if (
+                query_profile.domains
+                and stored_domain_order
+                and query_profile.domains[0] == stored_domain_order[0]
+            ):
+                score += 0.0015
+                reasons.append("Query domain is the judgment's primary controlling domain")
         elif query_profile.domains and primary_domains:
             score -= 0.012
             contradictions += 1
@@ -1117,7 +1336,10 @@ class SemanticEngine:
             set(query_profile.relationships) & primary_relationships
         )
         if shared_relationships:
-            score += min(0.003, len(shared_relationships) * 0.0015)
+            # Relationship posture (for example siblings/co-heirs versus a
+            # spouse or remote devisee) is a material factual constraint, not
+            # merely another keyword in succession and family-law searches.
+            score += min(0.006, len(shared_relationships) * 0.003)
             reasons.append("Same party relationship: " + ", ".join(shared_relationships[:2]))
 
         passage_adjustment, passage_reason = self._passage_role_adjustment(
@@ -1129,7 +1351,10 @@ class SemanticEngine:
             if isinstance(item, dict) and item.get("name") and item.get("value"):
                 candidate_facts[str(item["name"])] = str(item["value"])
         if passage_adjustment >= 0:
-            for name, value in selected_passage_profile.facts:
+            # The candidate profile contains the selected passage plus its
+            # immediate neighbours, which is the right factual unit for a
+            # passage split mid-sentence and avoids parsing the same text twice.
+            for name, value in candidate_profile.facts:
                 candidate_facts.setdefault(name, value)
         matched_fact_count = 0
         for name, expected in query_facts.items():
@@ -1352,7 +1577,11 @@ class SemanticEngine:
                     self._case_disposition(case_id)[0],
                 )
             }
-        rerank_pool_size = max(120, top_k * 10)
+        # Legal reranking is deliberately richer (central provisions, factual
+        # contradictions, posture and authority), so apply it only after RRF
+        # has reduced the candidate set. Sixty cases preserves broad recall for
+        # the displayed top ten without paying the full analysis cost for 120.
+        rerank_pool_size = max(60, top_k * 6)
         best_by_case = {
             case_id: best_by_case[case_id]
             for case_id in sorted(

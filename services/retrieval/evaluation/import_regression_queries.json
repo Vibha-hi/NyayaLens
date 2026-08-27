@@ -18,5 +18,23 @@
     "id": "ndps-bail-prolonged-custody",
     "query": "The accused seeks regular bail in an NDPS case after prolonged custody and trial delay.",
     "relevance": { "hc-phhc011365222025": 3, "sc-ik-42829903": 1 }
+  },
+  {
+    "id": "hindu-intestate-siblings-equal-shares",
+    "query": "Two brothers are equal legal heirs to immovable property left by their Hindu father under Section 8 of the Hindu Succession Act. He died intestate and each claims one-half share.",
+    "relevance": {
+      "sc-ik-21722097": 3,
+      "sc-ik-59829381": 2,
+      "sc-ik-115795579": 0
+    }
+  },
+  {
+    "id": "tenant-heirs-rent-control-protection",
+    "query": "A landlord seeks eviction after the tenant died, while the tenant's legal heirs claim continuing statutory protection under rent-control law.",
+    "relevance": {
+      "sc-ik-115795579": 3,
+      "sc-ik-137893087": 2,
+      "sc-ik-21722097": 0
+    }
   }
 ]

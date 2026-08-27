@@ -29,14 +29,14 @@ The first executable baseline was completed on 22 August 2026 and expanded to th
 
 | Area             | Implemented baseline                                                                                                                     | Production target                                                                                 |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Retrieval        | Two BGE-small vectors per judgment (facts and decision) + SQLite FTS5 over 151,653 passages                                              | Expand the versioned, licensed corpus; use PostgreSQL/pgvector when scale requires it             |
+| Retrieval        | Two BGE-small vectors per judgment (facts and decision) + SQLite FTS5 over 165,177 passages                                              | Expand the versioned, licensed corpus; use PostgreSQL/pgvector when scale requires it             |
 | Ranking          | Judgment-level RRF(k=60), passage-role/context reranking, contradiction checks and authority tie-breaker                                 | Tune weights on a lawyer-reviewed labelled set and retain only measurable improvements            |
 | Evidence         | Query-focused extractive summary, primary passage locator, ranking basis and source link                                                 | Automated provenance checks, immutable source versions and citation coverage reporting            |
 | Outcome/relation | Conservative extractive matter/trial status and winner fields; ambiguous cases say verify                                                | Add only reviewer-approved structured treatment signals and maintain abstention rules             |
 | Filters          | Structured filters validated in TypeScript and Python and applied to both branches                                                       | Expand facets with corpus-backed metadata and facet-level regression tests                        |
-| Corpus           | 4,609 source-linked Supreme Court and High Court judgments, version `import-2026-08-24-4609-cases`                                       | Authorized, independently reviewed and deduplicated corpus snapshots                              |
+| Corpus           | 4,609 source-linked Supreme Court and High Court judgments, version `import-2026-08-26-4609-cases`                                       | Authorized, independently reviewed and deduplicated corpus snapshots                              |
 | Source links     | Public original-judgment link returned for every result                                                                                  | Store retrieval timestamp, checksum, parser status and independent link monitoring                |
-| Evaluation       | Four versioned regression queries with dense/lexical/hybrid judged precision, coverage, MRR, Recall, condensed nDCG and pairwise metrics | 30-50 lawyer-reviewed queries, negatives, adversarial cases, p95 latency and confidence intervals |
+| Evaluation       | Six versioned engineering regression queries comparing dense, lexical, plain hybrid RRF and reranked hybrid with judged precision/coverage, known-positive MRR/Recall, condensed nDCG, pairwise metrics, latency and structural provenance coverage | 30-50 lawyer-reviewed queries, negatives, adversarial cases, controlled p95 latency and confidence intervals |
 | Validity         | Unsupported claim surface                                                                                                                | Cautious citation-treatment flag or explicit roadmap                                              |
 | Security         | Committed upstream token removed; no external query API; optional service secret                                                         | Revoke the previously exposed token, then add authentication, rate limiting and audit controls    |
 | Reliability      | Request sequencing, typed contracts, health endpoint, offline runtime and regression tests                                               | Add operational monitoring, retry policy, backups and corpus/index rollback                       |
@@ -410,7 +410,7 @@ Accept a result-level relevance label and optional comment without storing confi
 ### Dataset
 
 - Build 30-50 anonymized natural-language golden queries across the three initial matter types; 10-15 is the minimum pilot milestone.
-- A legally informed reviewer labels candidate judgments with graded relevance: `0 = irrelevant`, `1 = partly relevant`, `2 = highly relevant`.
+- A legally informed reviewer labels candidate judgments with graded relevance: `0 = explicitly irrelevant`, `1 = marginally relevant`, `2 = relevant`, `3 = strongly relevant`.
 - Record uncertainty and allow adjudication when reviewers disagree.
 - Freeze query, corpus and labels before comparing systems.
 - Keep golden queries out of model/index tuning where possible; separate development and test subsets as the dataset grows.
@@ -429,6 +429,11 @@ Accept a result-level relevance label and optional comment without storing confi
 - **Operational:** p50/p95 end-to-end latency, error rate, no-result rate.
 - **Trust:** source-link coverage, evidence-locator coverage, metadata completeness.
 - **Analysis:** per-matter/court/language slices and qualitative failure categories.
+
+Until candidate pools are independently adjudicated, the implemented sparse-qrel
+report must use the qualified names `judgedPrecision@5` and `condensedNdcg@10`.
+It must not be represented as exhaustive Precision@5 or standard fully judged
+nDCG@10.
 
 ### Provisional release gates
 

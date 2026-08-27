@@ -26,6 +26,12 @@ class EngineHelperTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SearchRequest(query="regular bail", filters=SearchFilters())
 
+    def test_request_accepts_exact_citation_or_case_title(self) -> None:
+        citation = SearchRequest(query="2024 INSC 438", filters=SearchFilters())
+        title = SearchRequest(query="Ajwar v. Waseem", filters=SearchFilters())
+        self.assertEqual(citation.query, "2024 INSC 438")
+        self.assertEqual(title.query, "Ajwar v. Waseem")
+
     def test_rrf_constant_is_documented_default(self) -> None:
         self.assertEqual(RRF_K, 60)
 
@@ -37,6 +43,8 @@ class EngineHelperTests(unittest.TestCase):
 
     def test_legal_domain_gate(self) -> None:
         self.assertTrue(is_legal_query("Can an accused receive bail under Section 439?"))
+        self.assertTrue(is_legal_query("2024 INSC 438"))
+        self.assertTrue(is_legal_query("Ajwar v. Waseem"))
         self.assertFalse(is_legal_query("Banana recipes and ocean weather forecasts"))
 
     def test_lexical_row_does_not_repeat_noisy_whole_judgment_issues(self) -> None:
