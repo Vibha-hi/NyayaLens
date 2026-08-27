@@ -4,10 +4,8 @@ import {
   RotateCcw,
   CheckCircle,
   FileText,
-  HelpCircle,
   Lightbulb,
   Shield,
-  Scale,
   SlidersHorizontal,
   ChevronDown,
 } from "lucide-react";
@@ -117,12 +115,13 @@ export function SearchPanel({
 
             <button
               type="button"
-              onClick={() => handleApplySample(DEFAULT_QUERY, "Bail & Personal Liberty")}
+              onClick={() => handleApplySample(DEFAULT_QUERY, "All")}
               className="text-[12.5px] font-medium text-brand-blue hover:text-navy underline-offset-4 hover:underline"
             >
               Reset to Original Case Facts
             </button>
           </div>
+
           {/* Large Text Area */}
           <div className="relative">
             <textarea
@@ -140,6 +139,7 @@ export function SearchPanel({
               </div>
             )}
           </div>
+
           {queryUnsupported && (
             <p className="mt-2 text-[11.5px] font-medium text-amber-800" role="alert">
               Enter a case title/citation, or describe at least four meaningful words and 20
@@ -293,7 +293,7 @@ export function SearchPanel({
                               ...filters,
                               dateFrom:
                                 event.target.value === "All Years"
-                                  ? ""
+                                   ? ""
                                   : `${event.target.value}-01-01`,
                               dateTo:
                                 event.target.value === "All Years"

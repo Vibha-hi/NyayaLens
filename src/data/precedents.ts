@@ -21,7 +21,7 @@ export const CATEGORIES: CategoryInfo[] = [
     iconName: "Scale",
     description: "Search every indexed Supreme Court and High Court judgment in the local corpus.",
     sampleQuery:
-      "The applicant seeks regular bail after prolonged custody. The investigation is complete and the prosecution relies mainly on documentary evidence.",
+      "During a confrontation, the accused caused the death of another person after claiming that the deceased had attacked first. The defence argues that the accused acted to protect himself from an immediate threat and did not intend to cause an unlawful killing",
   },
   {
     id: "Bail & Personal Liberty",
@@ -297,4 +297,4 @@ export const OUTCOME_FILTERS = [
 ] as const;
 
 export const DEFAULT_QUERY =
-  "The applicant seeks regular bail after prolonged custody. The investigation is complete and the prosecution relies mainly on documentary evidence. There is no allegation that the applicant may abscond or influence witnesses, and the trial is unlikely to conclude soon.";
+  "During a confrontation, the accused caused the death of another person after claiming that the deceased had attacked first. The defence argues that the accused acted to protect himself from an immediate threat and did not intend to cause an unlawful killing";
