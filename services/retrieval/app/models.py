@@ -154,3 +154,32 @@ class HealthResponse(BaseModel):
     modelVersion: str
     caseCount: int
     chunkCount: int
+
+
+class GraphRequest(BaseModel):
+    caseIds: list[str] = Field(min_length=1, max_length=20)
+
+
+class GraphNode(BaseModel):
+    id: str
+    title: str
+    citation: str
+    court: str
+    year: str
+    category: str
+    isResult: bool
+    sourceUrl: str
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    type: Literal["cites", "statute"]
+    label: str
+
+
+class GraphResponse(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    citationEdgeCount: int
+    statuteEdgeCount: int

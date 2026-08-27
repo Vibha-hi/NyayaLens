@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useMemo } from "react";
-import { SlidersHorizontal, ArrowLeft, X, AlignJustify, LayoutList, Search } from "lucide-react";
+import {
+  SlidersHorizontal,
+  ArrowLeft,
+  X,
+  AlignJustify,
+  LayoutList,
+  Search,
+  Network,
+} from "lucide-react";
 import { Navbar } from "@/components/legal/Navbar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import { SearchPanel } from "@/components/legal/SearchPanel";
@@ -12,6 +20,7 @@ import {
 } from "@/components/legal/FilterPanel";
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
 import { ResultSkeleton } from "@/components/legal/ResultSkeleton";
+import { CaseGraph } from "@/components/legal/CaseGraph";
 import {
   COURTS,
   DEFAULT_QUERY,
@@ -21,7 +30,9 @@ import {
   type Precedent,
 } from "@/data/precedents";
 import { searchCasesFn } from "@/api/search";
+import { caseGraphFn } from "@/api/graph";
 import type { SearchEngineResponse } from "@/contracts/search";
+import type { CaseGraphResponse } from "@/contracts/graph";
 import { expandSection } from "@/lib/legal-taxonomy";
 
 export const Route = createFileRoute("/")({
@@ -60,7 +71,12 @@ function Index() {
   const [sortOrder, setSortOrder] = useState("relevance");
   const [isCompact, setIsCompact] = useState(false);
   const [resultsQuery, setResultsQuery] = useState("");
+  const [graphView, setGraphView] = useState(false);
+  const [graphData, setGraphData] = useState<CaseGraphResponse | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState<string | null>(null);
   const latestRequestId = useRef(0);
+  const graphRunIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -84,6 +100,32 @@ function Index() {
       outcomes: savedOutcomes.filter((o) => (OUTCOME_FILTERS as readonly string[]).includes(o)),
     }));
   }, []);
+
+  useEffect(() => {
+    if (!graphView || results.length === 0) return;
+    if (graphRunIdRef.current === searchMeta?.runId) return;
+    let cancelled = false;
+    setGraphLoading(true);
+    setGraphError(null);
+    caseGraphFn({ data: { caseIds: results.map((r) => r.id) } })
+      .then((data) => {
+        if (cancelled) return;
+        setGraphData(data);
+        graphRunIdRef.current = searchMeta?.runId ?? null;
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setGraphError(
+          error instanceof Error ? error.message : "Could not build the case connection graph.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setGraphLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [graphView, results, searchMeta?.runId]);
 
   const executeSearch = async (currentQuery: string, currentFilters: Filters) => {
     const requestId = ++latestRequestId.current;
@@ -193,7 +235,21 @@ function Index() {
     setResults([]);
     setSearchMeta(null);
     setSearchError(null);
+    setGraphView(false);
+    setGraphData(null);
+    setGraphError(null);
+    graphRunIdRef.current = null;
     window.history.replaceState(null, "", window.location.pathname);
+  };
+
+  const openResultFromGraph = (caseId: string) => {
+    setGraphView(false);
+    setExpandedId(caseId);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`precedent-${caseId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const scrollToSearch = () => {
@@ -468,19 +524,33 @@ function Index() {
                           <div className="flex items-center rounded-md border border-border bg-background p-0.5">
                             <button
                               type="button"
-                              onClick={() => setIsCompact(true)}
-                              className={`rounded-sm p-1 ${isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
+                              onClick={() => {
+                                setIsCompact(true);
+                                setGraphView(false);
+                              }}
+                              className={`rounded-sm p-1 ${isCompact && !graphView ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
                               title="Compact view"
                             >
                               <AlignJustify className="size-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => setIsCompact(false)}
-                              className={`rounded-sm p-1 ${!isCompact ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
+                              onClick={() => {
+                                setIsCompact(false);
+                                setGraphView(false);
+                              }}
+                              className={`rounded-sm p-1 ${!isCompact && !graphView ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
                               title="Detailed view"
                             >
                               <LayoutList className="size-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGraphView((current) => !current)}
+                              className={`rounded-sm p-1 ${graphView ? "bg-muted text-navy" : "text-muted-foreground hover:text-navy"}`}
+                              title="Graph view: how these cases connect"
+                            >
+                              <Network className="size-3.5" />
                             </button>
                           </div>
                         </div>
@@ -532,6 +602,30 @@ function Index() {
                         >
                           Try again
                         </button>
+                      </div>
+                    ) : graphView ? (
+                      <div className="mt-6">
+                        {graphLoading ? (
+                          <ResultSkeleton />
+                        ) : graphError ? (
+                          <div className="py-12 text-center rounded-xl border border-dashed border-red-300 bg-red-50/50">
+                            <p className="text-[15px] font-medium text-red-700">
+                              Could not build the graph
+                            </p>
+                            <p className="mt-2 text-[13px] text-red-600/80 max-w-md mx-auto">
+                              {graphError}
+                            </p>
+                          </div>
+                        ) : graphData ? (
+                          <CaseGraph
+                            nodes={graphData.nodes}
+                            edges={graphData.edges}
+                            citationEdgeCount={graphData.citationEdgeCount}
+                            statuteEdgeCount={graphData.statuteEdgeCount}
+                            resultIds={results.map((r) => r.id)}
+                            onOpenResult={openResultFromGraph}
+                          />
+                        ) : null}
                       </div>
                     ) : filteredResults.length === 0 ? (
                       <div className="py-16 text-center rounded-xl border border-dashed border-border bg-surface mt-6">

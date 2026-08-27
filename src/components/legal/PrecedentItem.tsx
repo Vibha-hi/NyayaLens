@@ -344,7 +344,7 @@ export function PrecedentItem({
   const panelId = `why-${precedent.id}`;
 
   return (
-    <article className="py-7">
+    <article id={`precedent-${precedent.id}`} className="py-7 scroll-mt-24">
       <div className="flex items-start gap-4">
         <span
           aria-hidden="true"
