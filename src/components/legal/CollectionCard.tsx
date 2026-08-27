@@ -19,7 +19,7 @@ interface CollectionCardProps {
 }
 
 export function CollectionCard({ id, name, description, color, caseCount }: CollectionCardProps) {
-  const colorClasses = COLOR_MAP[color] || COLOR_MAP.blue;
+  const colorClasses = COLOR_MAP[color] || COLOR_MAP["blue"];
 
   return (
     <Link

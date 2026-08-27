@@ -33,7 +33,7 @@ export const Route = createFileRoute("/collection")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
-    id: (search.id as string) ?? "",
+    id: (search["id"] as string) ?? "",
   }),
   component: CollectionPage,
 });

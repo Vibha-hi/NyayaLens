@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ExternalLink, Bookmark, CheckCircle2, XCircle, Clock, HelpCircle, PieChart, CornerUpLeft } from "lucide-react";
-import type { Precedent } from "@/data/precedents";
+import { ChevronDown, ExternalLink, Bookmark, CheckCircle2, XCircle, Clock, HelpCircle, PieChart, CornerUpLeft, User, Shield, Scale } from "lucide-react";
+import { extractPartyDetails, type Precedent } from "@/data/precedents";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { SaveCaseModal } from "@/components/legal/SaveCaseModal";
@@ -439,9 +439,9 @@ export function PrecedentItem({
 
           {!isCompact && (
             <ul className="mt-3 flex flex-wrap gap-2">
-              {precedent.legalIssues.map((issue) => (
+              {precedent.legalIssues.map((issue, idx) => (
                 <li
-                  key={issue}
+                  key={`${issue}-${idx}`}
                   className="rounded-md border border-border px-2 py-0.5 text-[11.5px] text-navy"
                 >
                   {issue}
@@ -449,6 +449,86 @@ export function PrecedentItem({
               ))}
             </ul>
           )}
+
+          {/* Litigants / Parties Profile Section */}
+          {(() => {
+            const partyInfo = extractPartyDetails(precedent);
+            if (!partyInfo.appellantName && !partyInfo.respondentName) return null;
+
+            if (isCompact) {
+              return (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-border/80 bg-background/60 px-3.5 py-2 text-[12px]">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-flex items-center gap-1 rounded bg-brand-blue/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-brand-blue">
+                      <User className="size-3 shrink-0" />
+                      Applicant / Appellant
+                    </span>
+                    <span className="font-semibold text-navy truncate font-serif">{partyInfo.appellantName}</span>
+                  </div>
+                  <span aria-hidden="true" className="text-muted-foreground/60">vs.</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-600/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800 dark:text-amber-300">
+                      <Shield className="size-3 shrink-0" />
+                      Respondent / State
+                    </span>
+                    <span className="font-semibold text-navy truncate font-serif">{partyInfo.respondentName}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="mt-3.5 rounded-lg border border-border/80 bg-surface p-3.5 shadow-xs transition-all hover:border-border">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 mb-2.5">
+                  <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground flex items-center gap-1.5">
+                    <Scale className="size-3.5 text-brand-blue" />
+                    Litigants & Key Representation
+                  </span>
+                  <span className="text-[11px] font-medium text-navy/75">
+                    Direct Case Profiles
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Applicant / Appellant Card */}
+                  <div className="rounded-md border border-border/60 bg-background/70 p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-brand-blue/10 px-2 py-0.5 text-[10.5px] font-semibold text-brand-blue border border-brand-blue/20">
+                          <User className="size-3 shrink-0" />
+                          {partyInfo.appellantRole}
+                        </span>
+                      </div>
+                      <h4 className="mt-2 text-[14.5px] font-bold text-navy leading-snug font-serif">
+                        {partyInfo.appellantName}
+                      </h4>
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">
+                        {partyInfo.appellantAbout}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Respondent / Opposing Party Card */}
+                  <div className="rounded-md border border-border/60 bg-background/70 p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-600/10 px-2 py-0.5 text-[10.5px] font-semibold text-amber-800 dark:text-amber-300 border border-amber-500/20">
+                          <Shield className="size-3 shrink-0" />
+                          {partyInfo.respondentRole}
+                        </span>
+                      </div>
+                      <h4 className="mt-2 text-[14.5px] font-bold text-navy leading-snug font-serif">
+                        {partyInfo.respondentName}
+                      </h4>
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">
+                        {partyInfo.respondentAbout}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="mt-4 rounded-r-md border-l-2 border-brand-blue bg-evidence px-3.5 py-3">
             <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -596,9 +676,9 @@ export function PrecedentItem({
                   Matching legal terms
                 </dt>
                 <dd className="mt-1.5 flex flex-wrap gap-2">
-                  {precedent.explanation.matchingTerms.map((term) => (
+                  {precedent.explanation.matchingTerms.map((term, idx) => (
                     <span
-                      key={term}
+                      key={`${term}-${idx}`}
                       className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11.5px] text-navy"
                     >
                       {term}
@@ -618,8 +698,8 @@ export function PrecedentItem({
                 </dt>
                 <dd>
                   <ul className="mt-1 list-disc space-y-1 pl-4 text-foreground">
-                    {precedent.whyItMatched.map((point) => (
-                      <li key={point}>{point}</li>
+                    {precedent.whyItMatched.map((point, idx) => (
+                      <li key={`${point}-${idx}`}>{point}</li>
                     ))}
                   </ul>
                 </dd>

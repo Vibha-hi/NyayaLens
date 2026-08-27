@@ -16,10 +16,16 @@ PYTHON = SERVICE_ROOT / ".venv" / (Path("Scripts/python.exe") if os.name == "nt"
 
 
 def main() -> None:
-    corpus = SERVICE_ROOT / "data" / "import" / "cases.json"
-    if not PYTHON.is_file() or not corpus.is_file():
+    imported_corpus = SERVICE_ROOT / "data" / "import" / "cases.json"
+    sample_corpus = SERVICE_ROOT / "corpus" / "cases.json"
+    if not PYTHON.is_file() or (not imported_corpus.is_file() and not sample_corpus.is_file()):
         print("Retrieval data is not installed; running the one-time setup...", flush=True)
-        subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "setup_retrieval.py")], check=True)
+        try:
+            subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "setup_retrieval.py")], check=True)
+        except subprocess.CalledProcessError:
+            if not sample_corpus.is_file() or not PYTHON.is_file():
+                raise
+            print("Release bundle download failed; falling back to bundled demonstration corpus.", flush=True)
 
     npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
     if not npm:
