@@ -1,4 +1,4 @@
-"""Run the local retrieval service and web development server together."""
+﻿"""Run the local retrieval service and web development server together."""
 
 from __future__ import annotations
 
@@ -62,14 +62,21 @@ def main() -> None:
     service_url = _configured_retrieval_url()
     service_port = _local_service_port(service_url)
     service_ready = service_port is not None and _service_is_ready(service_url)
-    corpus = SERVICE_ROOT / "data" / "import" / "cases.json"
+    imported_corpus = SERVICE_ROOT / "data" / "import" / "cases.json"
+    sample_corpus = SERVICE_ROOT / "corpus" / "cases.json"
+    
     if (
         service_port is not None
         and not service_ready
-        and (not PYTHON.is_file() or not corpus.is_file())
+        and (not PYTHON.is_file() or (not imported_corpus.is_file() and not sample_corpus.is_file()))
     ):
         print("Retrieval data is not installed; running the one-time setup...", flush=True)
-        subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "setup_retrieval.py")], check=True)
+        try:
+            subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "setup_retrieval.py")], check=True)
+        except subprocess.CalledProcessError:
+            if not sample_corpus.is_file() or not PYTHON.is_file():
+                raise
+            print("Release bundle download failed; falling back to bundled demonstration corpus.", flush=True)
 
     commands: list[list[str]] = []
     if service_port is not None and not service_ready:

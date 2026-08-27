@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Trash2, FileText, Building2, Calendar, Edit3, Check, X } from "lucide-react";
+﻿import { useState } from "react";
+import { Trash2, FileText, Building2, Calendar, Edit3, Check, X, ExternalLink } from "lucide-react";
 
 interface SavedCaseItemProps {
   id: string;
@@ -50,7 +50,7 @@ export function SavedCaseItem({
           <h3 className="font-serif text-[15px] font-bold text-navy leading-snug line-clamp-2">
             {title}
           </h3>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground dark:text-foreground/80">
             <span className="inline-flex items-center gap-1">
               <Building2 className="size-3" />
               {court}
@@ -68,21 +68,33 @@ export function SavedCaseItem({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleRemove}
-          disabled={removing}
-          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
-          title="Remove from collection"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <a
+            href={`https://indiankanoon.org/search/?formInput=${encodeURIComponent(`"${title}"`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-accent hover:text-navy transition-colors"
+            title="Search for this case on Indian Kanoon"
+          >
+            <ExternalLink className="size-3.5" />
+            Open Case
+          </a>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={removing}
+            className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+            title="Remove from collection"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
       </div>
 
       {/* Notes section */}
       <div className="mt-4 rounded-lg border border-border bg-background p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-foreground/70">
             Notes
           </span>
           {!isEditing && (
@@ -138,13 +150,13 @@ export function SavedCaseItem({
             {notes}
           </p>
         ) : (
-          <p className="text-[13px] italic text-muted-foreground/60">
+          <p className="text-[13px] italic text-muted-foreground/60 dark:text-muted-foreground">
             No notes yet. Click Edit to add notes.
           </p>
         )}
       </div>
 
-      <div className="mt-3 text-[11px] text-muted-foreground/60">
+      <div className="mt-3 text-[11px] text-muted-foreground/60 dark:text-muted-foreground">
         Saved {new Date(savedAt).toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
