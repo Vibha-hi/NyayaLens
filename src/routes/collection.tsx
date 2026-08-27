@@ -216,7 +216,7 @@ function CollectionPage() {
                         {collection.description}
                       </p>
                     )}
-                    <p className="mt-2 text-[12px] text-muted-foreground/60">
+                    <p className="mt-2 text-[12px] text-muted-foreground/60 dark:text-muted-foreground">
                       {cases.length} {cases.length === 1 ? "case" : "cases"} saved
                     </p>
                   </div>
