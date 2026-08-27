@@ -16,6 +16,7 @@ import {
   FilterPanel,
   DEFAULT_FILTERS,
   computeFacets,
+  matchesCourt,
   type Filters,
 } from "@/components/legal/FilterPanel";
 import { PrecedentItem } from "@/components/legal/PrecedentItem";
@@ -148,8 +149,21 @@ function SearchRoute() {
     currentFilters.outcomes.forEach((o) => urlParams.append("outcome", o));
     window.history.replaceState(null, "", `${window.location.pathname}?${urlParams.toString()}`);
 
+    let backendCourt = "All Courts";
+    if (currentFilters.courts.length > 0) {
+      const hasSupreme = currentFilters.courts.some((c) => c.toLowerCase().includes("supreme"));
+      const hasHigh = currentFilters.courts.some((c) => !c.toLowerCase().includes("supreme"));
+      if (hasSupreme && !hasHigh) {
+        backendCourt = "Supreme Court";
+      } else if (hasHigh && !hasSupreme) {
+        backendCourt = "High Court";
+      } else {
+        backendCourt = "All Courts";
+      }
+    }
+
     const apiFilters = {
-      court: currentFilters.courts.length === 1 ? currentFilters.courts[0] : "All Courts",
+      court: backendCourt,
       year: "All Years",
       issue: currentFilters.issues.length === 1 ? currentFilters.issues[0] : "All Issues",
       outcome: currentFilters.outcomes.length === 1 ? currentFilters.outcomes[0] : "Any Outcome",
@@ -283,7 +297,10 @@ function SearchRoute() {
 
   const filteredResults = useMemo(() => {
     const baseFiltered = results.filter((r) => {
-      if (filters.courts.length > 0 && !filters.courts.includes(r.court)) return false;
+      if (filters.courts.length > 0) {
+        const matchesAnyCourt = filters.courts.some((c) => matchesCourt(r.court, c));
+        if (!matchesAnyCourt) return false;
+      }
       if (filters.dateFrom || filters.dateTo) {
         const caseDateStr = r.judgmentDate || `${r.year}-01-01`;
         const caseDate = new Date(caseDateStr);

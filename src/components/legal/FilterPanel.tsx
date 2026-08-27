@@ -23,6 +23,27 @@ export const DEFAULT_FILTERS: Filters = {
   outcomes: [],
 };
 
+export function matchesCourt(caseCourt: string, selected: string): boolean {
+  if (!selected || selected === "All" || selected === "All Courts") return true;
+  const courtLower = (caseCourt || "").toLowerCase().trim();
+  const selectedLower = (selected || "").toLowerCase().trim();
+
+  // Supreme Court matching (handles "Supreme Court", "Supreme Court of India", "SC")
+  if (selectedLower.includes("supreme")) {
+    return courtLower.includes("supreme");
+  }
+  if (courtLower.includes("supreme")) {
+    return selectedLower.includes("supreme");
+  }
+
+  // Handle High Courts & Benches
+  if (selectedLower === "high court") {
+    return courtLower.includes("high court") || !courtLower.includes("supreme");
+  }
+
+  return courtLower.includes(selectedLower);
+}
+
 export function computeFacets(results: Precedent[]) {
   const counts = {
     courts: {} as Record<string, number>,
@@ -32,8 +53,37 @@ export function computeFacets(results: Precedent[]) {
   };
 
   results.forEach((r) => {
-    counts.courts[r.court] = (counts.courts[r.court] || 0) + 1;
-    counts.outcomes[r.outcome] = (counts.outcomes[r.outcome] || 0) + 1;
+    const courtLower = (r.court || "").toLowerCase();
+
+    // Supreme Court facets (both labels)
+    if (courtLower.includes("supreme")) {
+      counts.courts["Supreme Court of India"] = (counts.courts["Supreme Court of India"] || 0) + 1;
+      counts.courts["Supreme Court"] = (counts.courts["Supreme Court"] || 0) + 1;
+    }
+
+    // High Courts & Benches facets
+    HIGH_COURTS.forEach((hc) => {
+      if (courtLower.includes(hc.name.toLowerCase())) {
+        counts.courts[hc.name] = (counts.courts[hc.name] || 0) + 1;
+      }
+      if (hc.benches) {
+        hc.benches.forEach((bench) => {
+          if (courtLower.includes(bench.toLowerCase())) {
+            counts.courts[bench] = (counts.courts[bench] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // Also store exact raw court string
+    if (r.court) {
+      counts.courts[r.court] = (counts.courts[r.court] || 0) + 1;
+    }
+
+    // Outcomes & issues
+    if (r.outcome) {
+      counts.outcomes[r.outcome] = (counts.outcomes[r.outcome] || 0) + 1;
+    }
     r.filterIssues.forEach((issue) => {
       counts.issues[issue] = (counts.issues[issue] || 0) + 1;
     });
