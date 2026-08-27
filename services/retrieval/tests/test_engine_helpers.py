@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 import unittest
 from pathlib import Path
@@ -6,7 +7,15 @@ from pathlib import Path
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT))
 
-from app.engine import RRF_K, SemanticEngine, extract_signals, is_legal_query, lexical_tokens  # noqa: E402
+from app.engine import (  # noqa: E402
+    RRF_K,
+    SemanticEngine,
+    extract_signals,
+    is_legal_query,
+    lexical_fts_clauses,
+    lexical_query_plan,
+    lexical_tokens,
+)
 from app.models import SearchFilters, SearchRequest  # noqa: E402
 
 
@@ -20,7 +29,67 @@ class EngineHelperTests(unittest.TestCase):
         self.assertIn("Section 438", signals)
 
     def test_lexical_tokens_remove_common_words(self) -> None:
-        self.assertEqual(lexical_tokens("The applicant seeks bail under Section 439"), ["bail", "under", "section", "439"])
+        self.assertEqual(
+            lexical_tokens("The applicant seeks bail under Section 439"),
+            ["bail", "439"],
+        )
+
+    def test_generic_legal_words_never_vote_independently(self) -> None:
+        self.assertEqual(
+            lexical_tokens(
+                "The allegation, evidence, petitioner, respondent, judgment and relief "
+                "concern witness intimidation."
+            ),
+            ["concern", "witness", "intimidation"],
+        )
+
+    def test_negated_content_is_not_emitted_as_a_positive_keyword(self) -> None:
+        query = (
+            "There is no allegation that the accused may abscond or influence witnesses. "
+            "The trial remains delayed."
+        )
+        tokens, signals = lexical_query_plan(query)
+        pairs = {(signal.negator, signal.target) for signal in signals}
+        self.assertNotIn("abscond", tokens)
+        self.assertNotIn("influence", tokens)
+        self.assertNotIn("witnesses", tokens)
+        self.assertIn(("no", "allegation"), pairs)
+        self.assertIn(("no", "abscond"), pairs)
+        self.assertIn(("no", "influence"), pairs)
+        self.assertIn(("no", "witnesses"), pairs)
+        self.assertIn("trial", tokens)
+        self.assertIn("delayed", tokens)
+
+    def test_fts_uses_negation_and_structured_phrases(self) -> None:
+        clauses, tokens, _ = lexical_fts_clauses(
+            "Under Section 439, there is no allegation that the accused may abscond."
+        )
+        self.assertIn('"section 439"', clauses)
+        self.assertIn("NEAR(no abscond, 10)", clauses)
+        self.assertNotIn('"abscond"', clauses)
+        self.assertNotIn("section", tokens)
+
+    def test_negated_fts_does_not_retrieve_positive_only_wording(self) -> None:
+        clauses, _, _ = lexical_fts_clauses(
+            "There is no allegation that the accused may abscond."
+        )
+        with sqlite3.connect(":memory:") as db:
+            db.execute(
+                "CREATE VIRTUAL TABLE passages "
+                "USING fts5(text, tokenize='porter unicode61')"
+            )
+            db.executemany(
+                "INSERT INTO passages(rowid, text) VALUES (?, ?)",
+                (
+                    (1, "There is no allegation that the accused may abscond."),
+                    (2, "The accused is likely to abscond and presents a flight risk."),
+                ),
+            )
+            rows = db.execute(
+                "SELECT rowid FROM passages WHERE passages MATCH ? ORDER BY rowid",
+                (" OR ".join(clauses),),
+            ).fetchall()
+        self.assertEqual(rows, [(1,)])
 
     def test_request_rejects_short_query(self) -> None:
         with self.assertRaises(ValueError):

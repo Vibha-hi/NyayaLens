@@ -90,14 +90,162 @@ def _compact_alnum(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+LEXICAL_STOPWORDS = frozenset(
+    """
+    a an the and or but if then than that this these those there here it its itself
+    he him his she her hers they them their theirs we us our ours i me my mine you
+    your yours of to in on at by for from with without into onto upon over under
+    through between among within during before after above below against about as per
+    via is am are was were be been being has have had having do does did doing can
+    could may might shall should will would must not no nor only just very more most
+    some any all both each every either neither such same own other another enough
+    rather quite still again even further however therefore thus hence whereas whereby
+    wherein whereof thereof therein thereby thereafter thereunder therewith thereupon
+    therefrom thereto case cases court courts judge judges judgment judgments order
+    orders petition petitions petitioner petitioners respondent respondents appellant
+    appellants applicant applicants accused person persons party parties matter matters
+    proceeding proceedings application applications section sections act acts law laws
+    legal learned counsel counsels advocate advocates counselled plea pleas submission
+    submissions argument arguments contention contentions allegation allegations alleged
+    alleges said says stated states stating submitted submits submitting claimed claims
+    claim averred avers averment evidence record records facts fact issue issues question
+    questions view views opinion opinions finding findings reason reasons ground grounds
+    relief prayer prayers notice notices report reports authority authorities decision
+    decisions direction directions hereinafter hereinbefore hereinabove hereinbelow
+    whereunder whereupon respectively aforesaid aforementioned ibid supra infra inter alia
+    viz namely etc etcetera se prima facie qua proviso provided notwithstanding
+    accordingly consequently which where seeks seeking
+    """.split()
+)
+
+NEGATION_WORDS = frozenset(
+    {"no", "not", "nor", "without", "neither", "never", "cannot"}
+)
+NEGATION_SCOPE_BREAKERS = frozenset(
+    {"but", "however", "whereas", "although", "though", "yet", "except"}
+)
+NEGATION_GENERIC_TARGETS = frozenset(
+    {
+        "allegation",
+        "allegations",
+        "claim",
+        "claims",
+        "evidence",
+        "likelihood",
+        "possibility",
+        "risk",
+    }
+)
+
+
+@dataclass(frozen=True)
+class NegatedLexicalSignal:
+    """A content word that must occur close to an express negator."""
+
+    negator: str
+    target: str
+    distance: int
+
+
 def lexical_tokens(text: str) -> list[str]:
     tokens = re.findall(r"[a-z0-9]+", text.lower())
-    stop = {
-        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "have",
-        "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "was", "were",
-        "with", "where", "which", "after", "before", "seeks", "applicant", "case",
-    }
-    return [token for token in tokens if len(token) > 2 and token not in stop]
+    return [token for token in tokens if len(token) > 2 and token not in LEXICAL_STOPWORDS]
+
+
+def lexical_query_plan(text: str) -> tuple[list[str], list[NegatedLexicalSignal]]:
+    """Return independent terms and polarity-preserving proximity signals.
+
+    Generic legal/form words never become standalone BM25 terms.  Content words
+    inside a bounded negation scope are also removed from the independent term
+    list and emitted only as ``NEAR(negator target)`` signals.  Consequently,
+    ``no allegation ... abscond`` cannot receive the same lexical vote as
+    ``likely to abscond`` merely because both contain ``abscond``.
+    """
+
+    lowered = text.lower()
+    matches = list(re.finditer(r"[a-z0-9]+", lowered))
+    tokens = [match.group(0) for match in matches]
+    negated_indexes: set[int] = set()
+    signals: list[NegatedLexicalSignal] = []
+    signal_pairs: set[tuple[str, str]] = set()
+
+    for index, negator in enumerate(tokens):
+        if negator not in NEGATION_WORDS:
+            continue
+        scope_indexes: list[int] = []
+        for candidate_index in range(index + 1, min(len(tokens), index + 14)):
+            between = lowered[
+                matches[candidate_index - 1].end() : matches[candidate_index].start()
+            ]
+            candidate = tokens[candidate_index]
+            if re.search(r"[,.;:]", between) or candidate in NEGATION_SCOPE_BREAKERS:
+                break
+            scope_indexes.append(candidate_index)
+
+        if not scope_indexes:
+            continue
+        negated_indexes.update(scope_indexes)
+        targets = [
+            tokens[candidate_index]
+            for candidate_index in scope_indexes
+            if (
+                tokens[candidate_index] in NEGATION_GENERIC_TARGETS
+                or (
+                    len(tokens[candidate_index]) > 2
+                    and tokens[candidate_index] not in LEXICAL_STOPWORDS
+                    and tokens[candidate_index] not in NEGATION_WORDS
+                )
+            )
+        ]
+        for target in dict.fromkeys(targets):
+            pair = (negator, target)
+            if pair in signal_pairs:
+                continue
+            signal_pairs.add(pair)
+            signals.append(
+                NegatedLexicalSignal(negator=negator, target=target, distance=10)
+            )
+
+    standalone = [
+        token
+        for index, token in enumerate(tokens)
+        if (
+            index not in negated_indexes
+            and len(token) > 2
+            and token not in LEXICAL_STOPWORDS
+            and token not in NEGATION_WORDS
+        )
+    ]
+    return list(dict.fromkeys(standalone)), signals
+
+
+def lexical_fts_clauses(
+    text: str,
+    profile: LegalQueryProfile | None = None,
+) -> tuple[list[str], list[str], list[NegatedLexicalSignal]]:
+    """Build safe FTS5 clauses without flattening negated legal facts."""
+
+    tokens, negated_signals = lexical_query_plan(text)
+    clauses = [f'"{token}"' for token in tokens]
+    clauses.extend(
+        f"NEAR({signal.negator} {signal.target}, {signal.distance})"
+        for signal in negated_signals
+    )
+
+    profile = profile or analyze_legal_query(text)
+    structured_phrases: list[str] = []
+    structured_phrases.extend(profile.sections)
+    structured_phrases.extend(
+        re.sub(r",?\s*(?:19|20)\d{2}$", "", statute).strip()
+        for statute in profile.statutes
+    )
+    for phrase in structured_phrases:
+        phrase_tokens = re.findall(r"[a-z0-9]+", phrase.lower())
+        if len(phrase_tokens) < 2:
+            continue
+        clauses.append('"' + " ".join(phrase_tokens) + '"')
+
+    return list(dict.fromkeys(clauses))[:45], tokens, negated_signals
 
 
 LEGAL_DOMAIN_TERMS = {
@@ -1068,7 +1216,7 @@ class SemanticEngine:
 
     def _best_chunk_for_case(self, case_id: str, query: str) -> str:
         profile = analyze_legal_query(query)
-        query_tokens = list(dict.fromkeys(lexical_tokens(query)))
+        _, query_tokens, _ = lexical_fts_clauses(query, profile)
         expanded_phrases = expansion_terms(profile)
         return max(
             self._chunks_by_case[case_id],
@@ -1131,12 +1279,15 @@ class SemanticEngine:
 
     def _lexical(self, query: str, filters: SearchFilters, limit: int = 100) -> list[RankedChunk]:
         # Keep the primary BM25 branch faithful to the user's actual words.
-        # Synonyms are applied in passage selection/reranking; adding all of them
-        # to one OR query diluted exact statute and provision matches.
-        tokens = list(dict.fromkeys(lexical_tokens(query)))
-        if not tokens:
+        # Generic legal/form words never vote independently, and content under
+        # an express negation is represented only by a bounded FTS5 NEAR clause.
+        # Synonyms remain in passage selection/reranking because adding all of
+        # them to one OR query dilutes exact statute and provision matches.
+        profile = analyze_legal_query(query)
+        fts_clauses, tokens, _ = lexical_fts_clauses(query, profile)
+        if not fts_clauses:
             return []
-        fts_query = " OR ".join(f'"{token}"' for token in tokens[:45])
+        fts_query = " OR ".join(fts_clauses)
         with closing(self._connect()) as db, db:
             rows = db.execute(
                 """
@@ -1148,7 +1299,6 @@ class SemanticEngine:
                 """,
                 (fts_query, max(limit * 12, 1_200)),
             ).fetchall()
-        profile = analyze_legal_query(query)
         expanded_phrases = expansion_terms(profile)
         # BM25 can return thousands of passages from the same few long
         # judgments. First retain only their strongest passages and enough
@@ -1588,7 +1738,10 @@ class SemanticEngine:
                 score += 0.006
                 reasons.append(f"Material structured-fact coverage ({fact_coverage:.0%})")
 
-        query_tokens = set(lexical_tokens(query))
+        # Do not award generic term-coverage points for content that appeared
+        # under negation in the query; structured fact matching below is
+        # polarity-aware and is the appropriate signal for those words.
+        query_tokens = set(lexical_query_plan(query)[0])
         facts_id, decision_id, _ = self._context_anchors_for_case(case_id)
         primary_text = " ".join(
             str(self._chunks[item]["evidence"])
@@ -1860,7 +2013,20 @@ class SemanticEngine:
             if filters.outcome != "Any Outcome":
                 reason_codes.append(f"Requested outcome match: {filters.outcome}")
 
-            highlight = [token for token in lexical_tokens(query) if token in chunk["evidence"].lower()][:5]
+            highlight_tokens, negated_highlights = lexical_query_plan(query)
+            highlight_candidates = [
+                *highlight_tokens,
+                *(
+                    item
+                    for signal in negated_highlights
+                    for item in (signal.negator, signal.target)
+                ),
+            ]
+            highlight = [
+                token
+                for token in dict.fromkeys(highlight_candidates)
+                if token in chunk["evidence"].lower()
+            ][:5]
             full_case_text = self._case_full_text(case_id)
             (
                 matter_status,
