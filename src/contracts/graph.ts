@@ -12,7 +12,8 @@ export const graphNodeSchema = z.object({
   year: z.string(),
   category: z.string(),
   isResult: z.boolean(),
-  sourceUrl: z.string().url(),
+  availableInCorpus: z.boolean(),
+  sourceUrl: z.string().url().nullable(),
 });
 
 export const graphEdgeSchema = z.object({
@@ -20,6 +21,7 @@ export const graphEdgeSchema = z.object({
   target: z.string(),
   type: z.enum(["cites", "statute"]),
   label: z.string(),
+  evidence: z.string(),
 });
 
 export const graphResponseSchema = z.object({
@@ -27,6 +29,10 @@ export const graphResponseSchema = z.object({
   edges: z.array(graphEdgeSchema),
   citationEdgeCount: z.number().int().nonnegative(),
   statuteEdgeCount: z.number().int().nonnegative(),
+  relatedCaseCount: z.number().int().nonnegative(),
+  resolvedRelatedCaseCount: z.number().int().nonnegative(),
+  unresolvedRelatedCaseCount: z.number().int().nonnegative(),
+  omittedRelatedCaseCount: z.number().int().nonnegative(),
 });
 
 export type GraphNode = z.infer<typeof graphNodeSchema>;

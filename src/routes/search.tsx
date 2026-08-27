@@ -622,7 +622,10 @@ function SearchRoute() {
                             nodes={graphData.nodes}
                             edges={graphData.edges}
                             citationEdgeCount={graphData.citationEdgeCount}
-                            statuteEdgeCount={graphData.statuteEdgeCount}
+                            relatedCaseCount={graphData.relatedCaseCount}
+                            resolvedRelatedCaseCount={graphData.resolvedRelatedCaseCount}
+                            unresolvedRelatedCaseCount={graphData.unresolvedRelatedCaseCount}
+                            omittedRelatedCaseCount={graphData.omittedRelatedCaseCount}
                             resultIds={results.map((result) => result.id)}
                             onOpenResult={openResultFromGraph}
                           />

@@ -5,7 +5,10 @@ interface CaseGraphProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
   citationEdgeCount: number;
-  statuteEdgeCount: number;
+  relatedCaseCount: number;
+  resolvedRelatedCaseCount: number;
+  unresolvedRelatedCaseCount: number;
+  omittedRelatedCaseCount: number;
   resultIds: string[];
   onOpenResult: (caseId: string) => void;
 }
@@ -18,8 +21,8 @@ interface SimNode {
   vy: number;
 }
 
-const WORLD_W = 1000;
-const WORLD_H = 560;
+const WORLD_W = 1200;
+const WORLD_H = 700;
 const MIN_ZOOM_W = 220;
 const MAX_ZOOM_W = 2200;
 
@@ -28,7 +31,7 @@ function seedPositions(nodeIds: string[]): Map<string, SimNode> {
   const n = Math.max(nodeIds.length, 1);
   nodeIds.forEach((id, i) => {
     const angle = (i / n) * Math.PI * 2;
-    const radius = Math.min(WORLD_W, WORLD_H) * 0.28;
+    const radius = Math.min(WORLD_W, WORLD_H) * 0.34;
     map.set(id, {
       id,
       x: WORLD_W / 2 + Math.cos(angle) * radius,
@@ -40,16 +43,32 @@ function seedPositions(nodeIds: string[]): Map<string, SimNode> {
   return map;
 }
 
+function splitNodeLabel(title: string): [string, string?] {
+  const words = title.split(/\s+/).filter(Boolean);
+  const lines: [string, string] = ["", ""];
+  for (const word of words) {
+    const lineIndex = lines[0].length < 18 ? 0 : 1;
+    if (lineIndex === 1 && `${lines[1]} ${word}`.trim().length > 20) {
+      lines[1] = `${lines[1].replace(/…$/, "").trim()}…`;
+      break;
+    }
+    lines[lineIndex] = `${lines[lineIndex]} ${word}`.trim();
+  }
+  return lines[1] ? [lines[0], lines[1]] : [lines[0]];
+}
+
 export function CaseGraph({
   nodes,
   edges,
   citationEdgeCount,
-  statuteEdgeCount,
+  relatedCaseCount,
+  resolvedRelatedCaseCount,
+  unresolvedRelatedCaseCount,
+  omittedRelatedCaseCount,
   resultIds,
   onOpenResult,
 }: CaseGraphProps) {
   const resultIdSet = useMemo(() => new Set(resultIds), [resultIds]);
-  const [showStatuteEdges, setShowStatuteEdges] = useState(citationEdgeCount === 0);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [, setTick] = useState(0);
   const [view, setView] = useState({ x: 0, y: 0, w: WORLD_W, h: WORLD_H });
@@ -64,10 +83,7 @@ export function CaseGraph({
     null,
   );
 
-  const visibleEdges = useMemo(
-    () => edges.filter((edge) => showStatuteEdges || edge.type === "cites"),
-    [edges, showStatuteEdges],
-  );
+  const visibleEdges = edges;
 
   const degree = useMemo(() => {
     const counts = new Map<string, number>();
@@ -119,13 +135,13 @@ export function CaseGraph({
             const dx = a.x - b.x;
             const dy = a.y - b.y;
             const distSq = Math.max(dx * dx + dy * dy, 25);
-            const force = 1800 / distSq;
+            const force = 6500 / distSq;
             fx += (dx / Math.sqrt(distSq)) * force;
             fy += (dy / Math.sqrt(distSq)) * force;
           }
 
-          fx += (WORLD_W / 2 - a.x) * 0.006;
-          fy += (WORLD_H / 2 - a.y) * 0.006;
+          fx += (WORLD_W / 2 - a.x) * 0.0025;
+          fy += (WORLD_H / 2 - a.y) * 0.0025;
 
           a.vx = (a.vx + fx * alpha) * 0.82;
           a.vy = (a.vy + fy * alpha) * 0.82;
@@ -138,7 +154,7 @@ export function CaseGraph({
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-          const target = edge.type === "cites" ? 170 : 230;
+          const target = edge.type === "cites" ? 225 : 270;
           const springForce = (dist - target) * (edge.type === "cites" ? 0.02 : 0.008) * alpha;
           const nx = dx / dist;
           const ny = dy / dist;
@@ -182,6 +198,16 @@ export function CaseGraph({
     const px = (clientX - rect.left) / rect.width;
     const py = (clientY - rect.top) / rect.height;
     return { x: view.x + px * view.w, y: view.y + py * view.h };
+  };
+
+  const openNode = (id: string) => {
+    const node = nodeById.get(id);
+    if (!node) return;
+    if (resultIdSet.has(id)) {
+      onOpenResult(id);
+    } else if (node.availableInCorpus && node.sourceUrl) {
+      window.open(node.sourceUrl, "_blank", "noopener,noreferrer");
+    }
   };
 
   const handleNodePointerDown = (id: string) => (event: React.PointerEvent) => {
@@ -233,16 +259,7 @@ export function CaseGraph({
       draggingRef.current = null;
       dragStartRef.current = null;
       reheat(0.25);
-      if (wasClick) {
-        const node = nodeById.get(id);
-        if (node) {
-          if (resultIdSet.has(id)) {
-            onOpenResult(id);
-          } else {
-            window.open(node.sourceUrl, "_blank", "noopener,noreferrer");
-          }
-        }
-      }
+      if (wasClick) openNode(id);
     }
     panRef.current = null;
   };
@@ -275,38 +292,50 @@ export function CaseGraph({
   };
 
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const referenceByTarget = useMemo(
+    () => new Map(edges.map((edge) => [edge.target, edge])),
+    [edges],
+  );
   const hoveredNeighbors = hoveredId ? (neighborsOf.get(hoveredId) ?? new Set<string>()) : null;
   const hoveredNode = hoveredId ? nodeById.get(hoveredId) : null;
+  const hoveredReference = hoveredId ? referenceByTarget.get(hoveredId) : null;
+
+  if (citationEdgeCount === 0 || relatedCaseCount === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-surface px-6 py-16 text-center">
+        <p className="font-serif text-xl font-semibold text-navy">No related cases found</p>
+        <p className="mx-auto mt-2 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
+          The extracted judgment text for these results did not contain a named case reference that
+          could be shown safely. Open an individual source judgment to verify any references that
+          may appear only in scanned or unextracted pages.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="text-[12.5px] text-muted-foreground">
-          <span className="font-medium text-navy">{citationEdgeCount}</span> citation link
-          {citationEdgeCount === 1 ? "" : "s"} ·{" "}
-          <span className="font-medium text-navy">{statuteEdgeCount}</span> shared-statute link
-          {statuteEdgeCount === 1 ? "" : "s"} found among {nodes.length} case
-          {nodes.length === 1 ? "" : "s"}
+          <span className="font-medium text-navy">{relatedCaseCount}</span> related case
+          {relatedCaseCount === 1 ? "" : "s"} found ·{" "}
+          <span className="font-medium text-navy">{resolvedRelatedCaseCount}</span> available in
+          corpus · <span className="font-medium text-navy">{unresolvedRelatedCaseCount}</span>{" "}
+          reference-only
+          {omittedRelatedCaseCount > 0
+            ? ` · ${omittedRelatedCaseCount} more omitted to keep the graph readable`
+            : ""}
         </div>
-        <label className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={showStatuteEdges}
-            onChange={(event) => {
-              setShowStatuteEdges(event.target.checked);
-              reheat(0.6);
-            }}
-            className="size-3.5 rounded-sm accent-[var(--brand-blue)]"
-          />
-          Show shared-statute links
-        </label>
+        <span className="text-[11px] text-muted-foreground">
+          {citationEdgeCount} source-text connection{citationEdgeCount === 1 ? "" : "s"}
+        </span>
       </div>
 
       <div className="relative">
         <svg
           ref={svgRef}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-          className="h-[560px] w-full touch-none select-none"
+          className="h-[620px] w-full touch-none select-none"
           onPointerMove={handleSvgPointerMove}
           onPointerUp={handleSvgPointerUp}
           onPointerLeave={handleSvgPointerUp}
@@ -355,7 +384,7 @@ export function CaseGraph({
                 opacity={dimmed ? 0.08 : edge.type === "cites" ? 0.75 : 0.35}
                 markerEnd={edge.type === "cites" ? "url(#case-graph-arrow)" : undefined}
               >
-                <title>{edge.label}</title>
+                <title>{edge.evidence ? `${edge.label}\n${edge.evidence}` : edge.label}</title>
               </line>
             );
           })}
@@ -367,8 +396,7 @@ export function CaseGraph({
             const isHovered = hoveredId === node.id;
             const isDimmed = hoveredId ? !isHovered && !hoveredNeighbors?.has(node.id) : false;
             const r = Math.min(16, 7 + (degree.get(node.id) ?? 0) * 1.6);
-            const shortTitle =
-              node.title.length > 26 ? `${node.title.slice(0, 26).trim()}…` : node.title;
+            const labelLines = splitNodeLabel(node.title);
             return (
               <g
                 key={node.id}
@@ -379,14 +407,34 @@ export function CaseGraph({
                 onPointerLeave={() =>
                   setHoveredId((current) => (current === node.id ? null : current))
                 }
-                className="cursor-pointer"
+                className={node.availableInCorpus ? "cursor-pointer" : "cursor-default"}
+                role={node.availableInCorpus ? "button" : "img"}
+                aria-label={
+                  node.availableInCorpus
+                    ? `${node.title}. Open case details.`
+                    : `${node.title}. Related case reference not available in the local corpus.`
+                }
+                tabIndex={node.availableInCorpus ? 0 : undefined}
+                onKeyDown={(event) => {
+                  if (node.availableInCorpus && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    openNode(node.id);
+                  }
+                }}
               >
                 <circle
                   r={r}
-                  className={isResult ? "text-brand-blue" : "text-muted-foreground"}
+                  className={
+                    isResult
+                      ? "text-brand-blue"
+                      : node.availableInCorpus
+                        ? "text-muted-foreground"
+                        : "text-saffron"
+                  }
                   fill={isResult ? "currentColor" : "var(--surface)"}
                   stroke="currentColor"
                   strokeWidth={isResult ? 0 : 1.5}
+                  strokeDasharray={!node.availableInCorpus ? "3 2" : undefined}
                 />
                 {isHovered && (
                   <circle
@@ -403,7 +451,11 @@ export function CaseGraph({
                   className="fill-foreground"
                   style={{ fontSize: 10, pointerEvents: "none" }}
                 >
-                  {shortTitle}
+                  {labelLines.map((line, index) => (
+                    <tspan key={`${node.id}-label-${index}`} x="0" dy={index === 0 ? 0 : 11}>
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               </g>
             );
@@ -417,37 +469,45 @@ export function CaseGraph({
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-full border border-muted-foreground" />
-            Connected, not in results
+            Related case available in corpus
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-full border border-dashed border-saffron" />
+            Named reference not in corpus
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-3 bg-brand-blue" />
-            Cites (citation text match)
-          </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <span
-              className="inline-block h-0 w-3 border-t border-dashed border-muted-foreground"
-              aria-hidden="true"
-            />
-            Shares a controlling statute
+            Mentioned in judgment text
           </div>
         </div>
 
         {hoveredNode && (
-          <div className="pointer-events-none absolute right-3 top-3 max-w-[260px] rounded-md border border-border bg-surface px-3 py-2.5 text-[12px] shadow-md">
+          <div className="pointer-events-none absolute right-3 top-3 max-w-[340px] rounded-md border border-border bg-surface px-3 py-2.5 text-[12px] shadow-md">
             <p className="font-serif font-semibold text-navy">{hoveredNode.title}</p>
             <p className="mt-1 text-muted-foreground">
               {hoveredNode.court} · {hoveredNode.year} · {hoveredNode.citation}
             </p>
+            <p className="mt-1.5 font-medium text-navy">
+              {hoveredNode.availableInCorpus
+                ? "Click to open this case"
+                : "Reference only - case details are not in the local corpus"}
+            </p>
+            {hoveredReference?.evidence && (
+              <p className="mt-2 border-t border-border pt-2 leading-relaxed text-muted-foreground">
+                <span className="font-medium text-navy">Mention context:</span>{" "}
+                {hoveredReference.evidence}
+              </p>
+            )}
           </div>
         )}
       </div>
 
       <p className="border-t border-border px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-        Citation links come from matching a case&apos;s own citation string inside another
-        case&apos;s extracted judgment text — a real textual match, not a legal-authority judgment.
-        Extracted source pages can include citation lists alongside the judgment text, so treat
-        direction as indicative and verify against the original document. Drag nodes to rearrange,
-        scroll to zoom, drag the background to pan.
+        Connections come from case names and reported citations found in the fetched judgments&apos;
+        extracted text. Solid related-case nodes resolve to this corpus and can be opened; dashed
+        gold nodes preserve named references whose details are unavailable locally. A mention does
+        not prove that the cited case was followed or remains valid. Verify the source judgment.
+        Drag nodes to rearrange, scroll to zoom, and drag the background to pan.
       </p>
     </div>
   );

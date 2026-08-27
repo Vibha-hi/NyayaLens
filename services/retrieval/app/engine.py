@@ -72,6 +72,15 @@ class RankedChunk:
     match_kind: str = ""
 
 
+@dataclass(frozen=True)
+class RelatedCaseMention:
+    """One case reference extracted directly from a judgment passage."""
+
+    title: str
+    citation: str
+    evidence: str
+
+
 def extract_signals(text: str) -> list[str]:
     return profile_signals(analyze_legal_query(text))[:16]
 
@@ -112,6 +121,183 @@ LEGAL_CASE_TITLE_PATTERN = re.compile(
     r"[A-Z][A-Z0-9.&'()/-]*(?:\s+[A-Z][A-Z0-9.&'()/-]*){0,8}\b",
     re.IGNORECASE,
 )
+RELATED_CASE_TITLE_PATTERN = re.compile(
+    r"\b[A-Z][A-Za-z0-9.&'()@/-]*(?:\s+(?:of|the|and|&|others?|ors\.?|anr\.?|"
+    r"another|through|its|by|represented|alias|[A-Z][A-Za-z0-9.&'()@/-]*)){0,14}\s+"
+    r"(?i:v\.?|vs\.?|versus)\s+"
+    r"[A-Z][A-Za-z0-9.&'()@/-]*(?:\s+(?:of|the|and|&|others?|ors\.?|anr\.?|"
+    r"another|through|its|by|represented|alias|[A-Z][A-Za-z0-9.&'()@/-]*)){0,14}\b"
+)
+NEUTRAL_CITATION_PATTERN = re.compile(
+    r"\b(?:19|20)\d{2}\s*:\s*[A-Z][A-Z0-9-]{1,15}\s*:\s*\d+\b",
+    re.IGNORECASE,
+)
+CASE_TITLE_LEADING_NOISE = re.compile(
+    r"^(?:(?:in|see|vide|under|following|relying|reliance|decision|judgment|judgement|"
+    r"authority|pronouncement|laid down)\s+)*(?:the\s+)?(?:case\s+of\s+)?",
+    re.IGNORECASE,
+)
+CASE_TITLE_TRAILING_NOISE = re.compile(
+    r"\s+(?:reported|decided|delivered|dated|observed|held)\s*$",
+    re.IGNORECASE,
+)
+CASE_TITLE_STOP_TOKENS = {
+    "anr",
+    "another",
+    "others",
+    "ors",
+    "the",
+}
+GENERIC_CASE_PARTY_TOKENS = {
+    "appellant",
+    "appellants",
+    "applicant",
+    "applicants",
+    "petitioner",
+    "petitioners",
+    "respondent",
+    "respondents",
+    "ors",
+}
+
+
+def _normalise_citation(value: str) -> str:
+    return _compact_alnum(value)
+
+
+def _clean_case_title(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value).strip(" ,;:.\n\t-\u2013\u2014")
+    lowered = cleaned.lower()
+    for marker in ("in the cases of ", "cases of ", "in the case of ", "case of "):
+        marker_position = lowered.rfind(marker)
+        if marker_position >= 0:
+            cleaned = cleaned[marker_position + len(marker) :]
+            lowered = cleaned.lower()
+            break
+    cleaned = re.sub(r"^(?:and\s+)?(?:in|see|vide)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^and\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = CASE_TITLE_LEADING_NOISE.sub("", cleaned)
+    cleaned = CASE_TITLE_TRAILING_NOISE.sub("", cleaned)
+    cleaned = re.sub(r"\s+(?:v\.?|vs\.?|versus)\s+", " v. ", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip(" ,;:.-")
+
+
+def _normalise_case_title(value: str) -> str:
+    cleaned = _clean_case_title(value).lower()
+    cleaned = re.sub(r"\([^)]*\)", " ", cleaned)
+    cleaned = re.sub(r"\b(?:and\s+)?(?:others|ors\.?|anr\.?|another)\b", " ", cleaned)
+    tokens = [
+        token
+        for token in re.findall(r"[a-z0-9]+", cleaned.replace("versus", " v "))
+        if token not in CASE_TITLE_STOP_TOKENS
+    ]
+    return " ".join(tokens)
+
+
+def _citation_matches(text: str) -> list[re.Match[str]]:
+    matches = list(LEGAL_CITATION_PATTERN.finditer(text))
+    matches.extend(NEUTRAL_CITATION_PATTERN.finditer(text))
+    return sorted(matches, key=lambda match: (match.start(), -(match.end() - match.start())))
+
+
+def _reference_evidence(text: str, start: int, end: int, limit: int = 420) -> str:
+    excerpt_start = max(0, start - 180)
+    excerpt_end = min(len(text), end + 220)
+    excerpt = re.sub(r"\s+", " ", text[excerpt_start:excerpt_end]).strip(" ,;:")
+    if excerpt_start > 0:
+        excerpt = "..." + excerpt
+    if excerpt_end < len(text):
+        excerpt += "..."
+    if len(excerpt) <= limit:
+        return excerpt
+    clipped = excerpt[:limit].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return clipped + "..."
+
+
+def extract_related_case_mentions(
+    text: str,
+    *,
+    own_title: str = "",
+    own_citation: str = "",
+) -> list[RelatedCaseMention]:
+    """Extract named or citation-only case references from local judgment text.
+
+    A named case is retained even when it cannot be resolved to the local corpus.
+    Citation-only mentions are retained so the graph can still resolve them to a
+    corpus judgment whose title was omitted from the referring passage.
+    """
+
+    normalized_text = re.sub(r"[\r\t]+", " ", text)
+    citations = _citation_matches(normalized_text)
+    own_title_key = _normalise_case_title(own_title)
+    own_citation_key = _normalise_citation(own_citation)
+    mentions: list[RelatedCaseMention] = []
+    used_citation_spans: set[tuple[int, int]] = set()
+    seen: set[tuple[str, str]] = set()
+
+    title_matches = list(RELATED_CASE_TITLE_PATTERN.finditer(normalized_text))
+    for title_index, title_match in enumerate(title_matches):
+        title = _clean_case_title(title_match.group(0))
+        title_key = _normalise_case_title(title)
+        if not title_key or title_key == own_title_key or " v " not in title_key:
+            continue
+        left_party, right_party = title_key.split(" v ", 1)
+        if not left_party or not right_party:
+            continue
+        if set(left_party.split()) <= GENERIC_CASE_PARTY_TOKENS:
+            continue
+
+        next_title_start = (
+            title_matches[title_index + 1].start()
+            if title_index + 1 < len(title_matches)
+            else len(normalized_text)
+        )
+        nearby = [
+            match
+            for match in citations
+            if title_match.end() <= match.start() <= min(title_match.end() + 260, next_title_start)
+        ]
+        citation_match = min(nearby, key=lambda match: abs(match.start() - title_match.end())) if nearby else None
+        citation = re.sub(r"\s+", " ", citation_match.group(0)).strip() if citation_match else ""
+        citation_key = _normalise_citation(citation)
+        if citation_key and citation_key == own_citation_key:
+            continue
+        key = (title_key, citation_key)
+        if key in seen:
+            continue
+        seen.add(key)
+        if citation_match:
+            used_citation_spans.add((citation_match.start(), citation_match.end()))
+        evidence_end = citation_match.end() if citation_match else title_match.end()
+        mentions.append(
+            RelatedCaseMention(
+                title=title,
+                citation=citation,
+                evidence=_reference_evidence(normalized_text, title_match.start(), evidence_end),
+            )
+        )
+
+    for citation_match in citations:
+        span = (citation_match.start(), citation_match.end())
+        if span in used_citation_spans:
+            continue
+        citation = re.sub(r"\s+", " ", citation_match.group(0)).strip()
+        citation_key = _normalise_citation(citation)
+        if not citation_key or citation_key == own_citation_key:
+            continue
+        key = ("", citation_key)
+        if key in seen:
+            continue
+        seen.add(key)
+        mentions.append(
+            RelatedCaseMention(
+                title="",
+                citation=citation,
+                evidence=_reference_evidence(normalized_text, citation_match.start(), citation_match.end()),
+            )
+        )
+
+    return mentions
 
 
 def is_legal_query(text: str) -> bool:
@@ -161,8 +347,7 @@ class SemanticEngine:
         self._citation_context_cache: dict[str, set[str]] = {}
         self._primary_profile_cache: dict[str, LegalQueryProfile] = {}
         self._case_issue_cache: dict[str, tuple[str, ...]] = {}
-        self._cites_out: dict[str, set[str]] | None = None
-        self._cited_by: dict[str, set[str]] | None = None
+        self._reference_lookups: tuple[dict[str, str], dict[str, str]] | None = None
         self._ensure_index()
         self._load_vectors()
 
@@ -1784,143 +1969,202 @@ class SemanticEngine:
             return None
         return candidate if candidate.is_file() else None
 
-    def _ensure_citation_graph(self) -> None:
-        """Lazily build a corpus-wide "which case's text names another case's citation" graph.
-
-        Built once and cached: recent imported judgments rarely cite each other
-        (most citations point outside this narrow corpus), so this is a sparse,
-        high-precision signal rather than something computed per search.
-        """
-
-        if self._cites_out is not None and self._cited_by is not None:
+    @staticmethod
+    def _register_unique_lookup(lookup: dict[str, str], ambiguous: set[str], key: str, case_id: str) -> None:
+        if not key or key in ambiguous:
             return
-        with self._lock:
-            if self._cites_out is not None and self._cited_by is not None:
-                return
-            citation_lookup: dict[str, str] = {}
-            for case_id, case in self._cases.items():
-                compact_citation = _compact_alnum(str(case.get("citation", "")))
-                if len(compact_citation) >= 8 and any(ch.isdigit() for ch in compact_citation):
-                    citation_lookup.setdefault(compact_citation, case_id)
+        previous = lookup.get(key)
+        if previous is None:
+            lookup[key] = case_id
+        elif previous != case_id:
+            lookup.pop(key, None)
+            ambiguous.add(key)
 
-            cites_out: dict[str, set[str]] = defaultdict(set)
-            cited_by: dict[str, set[str]] = defaultdict(set)
-            if citation_lookup:
-                alternatives = sorted(citation_lookup, key=len, reverse=True)
-                pattern = re.compile("|".join(re.escape(item) for item in alternatives))
-                for case_id, case in self._cases.items():
-                    own_citation = _compact_alnum(str(case.get("citation", "")))
-                    compact_text = _compact_alnum(self._case_full_text(case_id))
-                    for hit in set(pattern.findall(compact_text)):
-                        if hit == own_citation:
-                            continue
-                        target_id = citation_lookup[hit]
-                        if target_id == case_id:
-                            continue
-                        cites_out[case_id].add(target_id)
-                        cited_by[target_id].add(case_id)
-            self._cites_out = cites_out
-            self._cited_by = cited_by
+    def _case_reference_lookups(self) -> tuple[dict[str, str], dict[str, str]]:
+        cached = getattr(self, "_reference_lookups", None)
+        if cached is not None:
+            return cached
 
-    def case_graph(self, case_ids: list[str], max_extra_neighbors: int = 15) -> GraphResponse:
-        """Build an Obsidian-style connection graph for a set of result cases.
+        citation_lookup: dict[str, str] = {}
+        title_lookup: dict[str, str] = {}
+        ambiguous_citations: set[str] = set()
+        ambiguous_titles: set[str] = set()
+        for case_id, case in self._cases.items():
+            citation_text = str(case.get("citation", ""))
+            if "not extracted" not in citation_text.lower():
+                citation_aliases = {
+                    _normalise_citation(match.group(0))
+                    for match in _citation_matches(citation_text)
+                }
+                for part in re.split(r"[;|]", citation_text):
+                    compact = _normalise_citation(part)
+                    if len(compact) >= 8 and any(character.isdigit() for character in compact):
+                        citation_aliases.add(compact)
+                for alias in citation_aliases:
+                    self._register_unique_lookup(
+                        citation_lookup, ambiguous_citations, alias, case_id
+                    )
 
-        Two distinct, honestly-labelled edge types: "cites" from detecting one
-        case's own citation string inside another case's judgment text (a real
-        textual link, not inferred), and "statute" from sharing a controlling
-        statute (a softer, always-available fallback so the graph is not empty
-        when this narrow corpus has no direct citations among the results).
+            title_key = _normalise_case_title(str(case.get("title", "")))
+            self._register_unique_lookup(title_lookup, ambiguous_titles, title_key, case_id)
+
+        self._reference_lookups = (citation_lookup, title_lookup)
+        return self._reference_lookups
+
+    def _resolve_related_case(self, mention: RelatedCaseMention) -> str | None:
+        citation_lookup, title_lookup = self._case_reference_lookups()
+        citation_key = _normalise_citation(mention.citation)
+        if citation_key and citation_key in citation_lookup:
+            return citation_lookup[citation_key]
+        title_key = _normalise_case_title(mention.title)
+        return title_lookup.get(title_key) if title_key else None
+
+    @staticmethod
+    def _external_reference_id(mention: RelatedCaseMention) -> str:
+        identity = _normalise_case_title(mention.title) or _normalise_citation(mention.citation)
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+        return f"external-reference-{digest}"
+
+    @staticmethod
+    def _reference_year(citation: str) -> str:
+        match = re.search(r"\b(?:19|20)\d{2}\b", citation)
+        return match.group(0) if match else "Year not extracted"
+
+    def _graph_corpus_node(self, case_id: str, seed_set: set[str]) -> GraphNode:
+        case = self._cases[case_id]
+        source_url = (
+            str(case.get("sourceUrl"))
+            if case.get("sourceUrl")
+            else f"http://127.0.0.1:8001/documents/{quote(case_id, safe='')}"
+        )
+        return GraphNode(
+            id=case_id,
+            title=str(case["title"]),
+            citation=str(case.get("citation", "Citation not extracted")),
+            court=str(case.get("courtName", case.get("court", "Court not extracted"))),
+            year=str(case.get("year", "Year not extracted")),
+            category=str(case.get("category", "Unclassified")),
+            isResult=case_id in seed_set,
+            availableInCorpus=True,
+            sourceUrl=source_url,
+        )
+
+    def case_graph(self, case_ids: list[str], max_extra_neighbors: int = 18) -> GraphResponse:
+        """Build a graph from case references found in the fetched judgments.
+
+        Only the local extracted judgment text is inspected. A cited case is
+        resolved by a unique reported citation first and a unique normalized case
+        title second. Named references that are absent from the corpus remain in
+        the graph as honest, non-clickable vertices instead of being discarded.
         """
 
         seed_ids = [case_id for case_id in dict.fromkeys(case_ids) if case_id in self._cases]
         if not seed_ids:
-            return GraphResponse(nodes=[], edges=[], citationEdgeCount=0, statuteEdgeCount=0)
+            return GraphResponse(
+                nodes=[],
+                edges=[],
+                citationEdgeCount=0,
+                statuteEdgeCount=0,
+                relatedCaseCount=0,
+                resolvedRelatedCaseCount=0,
+                unresolvedRelatedCaseCount=0,
+                omittedRelatedCaseCount=0,
+            )
 
-        self._ensure_citation_graph()
-        assert self._cites_out is not None and self._cited_by is not None
         seed_set = set(seed_ids)
-
-        neighbor_ids: list[str] = []
-        for case_id in seed_ids:
-            for neighbor in sorted(self._cites_out.get(case_id, ())) + sorted(
-                self._cited_by.get(case_id, ())
-            ):
-                if neighbor not in seed_set and neighbor not in neighbor_ids:
-                    neighbor_ids.append(neighbor)
-        neighbor_ids = neighbor_ids[:max_extra_neighbors]
-
-        node_ids = seed_ids + neighbor_ids
-        node_id_set = set(node_ids)
-
+        node_ids = list(seed_ids)
+        extra_node_ids: set[str] = set()
+        external_mentions: dict[str, RelatedCaseMention] = {}
+        related_target_ids: set[str] = set()
+        resolved_target_ids: set[str] = set()
+        unresolved_target_ids: set[str] = set()
+        omitted_target_ids: set[str] = set()
         edges: list[GraphEdge] = []
         edge_pairs_seen: set[tuple[str, str]] = set()
 
-        for source in node_ids:
-            for target in sorted(self._cites_out.get(source, ())):
-                if target not in node_id_set:
+        for source_id in seed_ids:
+            source_case = self._cases[source_id]
+            mentions = extract_related_case_mentions(
+                self._case_full_text(source_id),
+                own_title=str(source_case.get("title", "")),
+                own_citation=str(source_case.get("citation", "")),
+            )
+            mentions.sort(key=lambda mention: (not bool(mention.citation), mention.title.lower()))
+            for mention in mentions:
+                resolved_id = self._resolve_related_case(mention)
+                if resolved_id == source_id:
                     continue
-                pair = (source, target)
+                if resolved_id is not None:
+                    target_id = resolved_id
+                    target_case = self._cases[target_id]
+                    title = str(target_case.get("title", mention.title or mention.citation))
+                    citation = str(target_case.get("citation", mention.citation))
+                else:
+                    if not mention.title:
+                        continue
+                    target_id = self._external_reference_id(mention)
+                    title = mention.title
+                    citation = mention.citation
+
+                if target_id not in seed_set and target_id not in extra_node_ids:
+                    if len(extra_node_ids) >= max_extra_neighbors:
+                        omitted_target_ids.add(target_id)
+                        continue
+                    extra_node_ids.add(target_id)
+                    node_ids.append(target_id)
+                    if resolved_id is None:
+                        external_mentions[target_id] = mention
+
+                related_target_ids.add(target_id)
+                if resolved_id is None:
+                    unresolved_target_ids.add(target_id)
+                else:
+                    resolved_target_ids.add(target_id)
+
+                pair = (source_id, target_id)
                 if pair in edge_pairs_seen:
                     continue
                 edge_pairs_seen.add(pair)
-                target_case = self._cases[target]
+                reference_label = title
+                if citation and citation.lower() not in title.lower():
+                    reference_label += f" ({citation})"
                 edges.append(
                     GraphEdge(
-                        source=source,
-                        target=target,
+                        source=source_id,
+                        target=target_id,
                         type="cites",
-                        label=f"Cites {target_case['citation']}",
+                        label=f"Mentions {reference_label}",
+                        evidence=mention.evidence,
                     )
                 )
-        citation_edge_count = len(edges)
 
-        statute_edge_count = 0
-        for i, source in enumerate(node_ids):
-            source_statutes = {
-                statute.lower(): statute
-                for statute in self._case_primary_profile(source).statutes
-            }
-            if not source_statutes:
+        nodes: list[GraphNode] = []
+        for node_id in node_ids:
+            if node_id in self._cases:
+                nodes.append(self._graph_corpus_node(node_id, seed_set))
                 continue
-            for target in node_ids[i + 1 :]:
-                if (source, target) in edge_pairs_seen or (target, source) in edge_pairs_seen:
-                    continue
-                target_statutes = {
-                    statute.lower() for statute in self._case_primary_profile(target).statutes
-                }
-                shared = sorted(source_statutes[key] for key in source_statutes if key in target_statutes)
-                if not shared:
-                    continue
-                edge_pairs_seen.add((source, target))
-                statute_edge_count += 1
-                edges.append(
-                    GraphEdge(
-                        source=source,
-                        target=target,
-                        type="statute",
-                        label="Same controlling statute: " + ", ".join(shared[:2]),
-                    )
+            mention = external_mentions[node_id]
+            nodes.append(
+                GraphNode(
+                    id=node_id,
+                    title=mention.title,
+                    citation=mention.citation or "Citation not extracted",
+                    court="Not available in local corpus",
+                    year=self._reference_year(mention.citation),
+                    category="Cited case reference",
+                    isResult=False,
+                    availableInCorpus=False,
+                    sourceUrl=None,
                 )
-
-        nodes = [
-            GraphNode(
-                id=case_id,
-                title=str(self._cases[case_id]["title"]),
-                citation=str(self._cases[case_id]["citation"]),
-                court=str(self._cases[case_id].get("courtName", self._cases[case_id]["court"])),
-                year=str(self._cases[case_id]["year"]),
-                category=str(self._cases[case_id]["category"]),
-                isResult=case_id in seed_set,
-                sourceUrl=str(self._cases[case_id].get("sourceUrl"))
-                if self._cases[case_id].get("sourceUrl")
-                else f"http://127.0.0.1:8001/documents/{quote(case_id, safe='')}",
             )
-            for case_id in node_ids
-        ]
 
         return GraphResponse(
             nodes=nodes,
             edges=edges,
-            citationEdgeCount=citation_edge_count,
-            statuteEdgeCount=statute_edge_count,
+            citationEdgeCount=len(edges),
+            statuteEdgeCount=0,
+            relatedCaseCount=len(related_target_ids),
+            resolvedRelatedCaseCount=len(resolved_target_ids),
+            unresolvedRelatedCaseCount=len(unresolved_target_ids),
+            omittedRelatedCaseCount=len(omitted_target_ids),
         )

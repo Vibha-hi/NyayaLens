@@ -616,9 +616,9 @@ export function PrecedentItem({
                     Matching legal terms
                   </dt>
                   <dd className="mt-1.5 flex flex-wrap gap-2">
-                    {precedent.explanation.matchingTerms.map((term) => (
+                    {precedent.explanation.matchingTerms.map((term, index) => (
                       <span
-                        key={term}
+                        key={`${term}-${index}`}
                         className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11.5px] text-navy"
                       >
                         {term}
@@ -638,8 +638,8 @@ export function PrecedentItem({
                   </dt>
                   <dd>
                     <ul className="mt-1 list-disc space-y-1 pl-4 text-foreground">
-                      {precedent.whyItMatched.map((point) => (
-                        <li key={point}>{point}</li>
+                      {precedent.whyItMatched.map((point, index) => (
+                        <li key={`${point}-${index}`}>{point}</li>
                       ))}
                     </ul>
                   </dd>

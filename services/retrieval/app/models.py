@@ -195,7 +195,8 @@ class GraphNode(BaseModel):
     year: str
     category: str
     isResult: bool
-    sourceUrl: str
+    availableInCorpus: bool
+    sourceUrl: str | None = None
 
 
 class GraphEdge(BaseModel):
@@ -203,6 +204,7 @@ class GraphEdge(BaseModel):
     target: str
     type: Literal["cites", "statute"]
     label: str
+    evidence: str = ""
 
 
 class GraphResponse(BaseModel):
@@ -210,3 +212,7 @@ class GraphResponse(BaseModel):
     edges: list[GraphEdge]
     citationEdgeCount: int
     statuteEdgeCount: int
+    relatedCaseCount: int
+    resolvedRelatedCaseCount: int
+    unresolvedRelatedCaseCount: int
+    omittedRelatedCaseCount: int
