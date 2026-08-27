@@ -62,3 +62,10 @@ def document(case_id: str, engine: SemanticEngine = Depends(get_engine)) -> File
     if path is None:
         raise HTTPException(status_code=404, detail="Source document is not available")
     return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline")
+
+@app.get("/documents/{case_id}/text")
+def document_text(case_id: str, engine: SemanticEngine = Depends(get_engine)) -> dict[str, str]:
+    text = engine.document_text(case_id)
+    if text is None:
+        raise HTTPException(status_code=404, detail="Source document text is not available")
+    return {"text": text}

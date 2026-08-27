@@ -1784,6 +1784,13 @@ class SemanticEngine:
             return None
         return candidate if candidate.is_file() else None
 
+    def document_text(self, case_id: str) -> str | None:
+        chunk_ids = self._chunks_by_case.get(case_id)
+        if not chunk_ids:
+            return None
+        return "\n\n".join(str(self._chunks[chunk_id]["evidence"]) for chunk_id in chunk_ids)
+
+
     def _ensure_citation_graph(self) -> None:
         """Lazily build a corpus-wide "which case's text names another case's citation" graph.
 
