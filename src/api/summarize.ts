@@ -1,10 +1,10 @@
-﻿import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const summarizeCaseFn = createServerFn({ method: "POST" })
   .validator((caseId: string) => caseId)
   .handler(async ({ data: caseId }) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured in the environment.");
     }
